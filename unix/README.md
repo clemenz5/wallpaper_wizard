@@ -1,11 +1,12 @@
-# Wallpaper Wizard Unix X-based systems
+# Wallpaper Wizard X-based Systems
+This is jsut one basic script as a suggestion. Customize it to your needs.
 ## Run
+You can run this script once by executing
 ```[bash]
-$ chmod +x get_wallpaper.sh && ./get_wallpaper.sh "https://ww.keefer.de" "spacex" ""
+$ chmod +x get_wallpaper.sh && ./get_wallpaper.sh "https://ww.keefer.de" "sail" ""
 ```
-That will set you a new wallpaper with the tag "spacex" wich is synced to noone.
+This will get you a nice sailing boat as a background without syncing to anyone
 
 ## Install
-There are more many ways to install programs on linux (extend your PATH, copy to existing PATH, link to existing PATH, ...).\
-Depending on your system and preferences that can differ.\\
-You can try `# ln -s "$(pwd)/get_wallpaper.sh" /usr/bin/gw` to make the program available system-wide as `gw`
+There are many ways to install this. One is `# ln -s "$(pwd)/get_wallpaper.sh" /usr/bin/gw`\
+The script will be systemwide accessible with the shortcut `gw`
