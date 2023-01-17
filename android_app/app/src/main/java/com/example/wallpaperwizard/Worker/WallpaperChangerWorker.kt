@@ -1,4 +1,4 @@
-package com.example.wallpaperwizard
+package com.example.wallpaperwizard.Worker
 
 import android.R
 import android.app.NotificationChannel
@@ -13,13 +13,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import com.example.wallpaperwizard.WallpaperApi
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import java.io.BufferedInputStream
-import java.io.InputStream
-import java.net.URL
 
 
 class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters) :
