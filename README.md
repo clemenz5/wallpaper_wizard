@@ -1,6 +1,6 @@
 # wallpaper_wizard
-This tool can help you to synchronize wallpapers across all devices
-All clients are included in this project
+This tool can help you to synchronize wallpapers across all devices.\
+All clients are included in this project.\
 There is a deployment to try: [Wallpaper Wizard Api Docs](https://ww.keefer.de/api-docs)
 
 ## Android App
