@@ -1,0 +1,326 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Wallpaper Wizard",
+    "description": "This tool can help you to synchronize your wallpaper across all devices. Simply get a wallpaper by calling the endpoint. If you want to have more control check out the tags and sync option",
+    "contact": {
+      "email": "lorenz.keefer@web.de"
+    },
+    "version": "0.0.1"
+  },
+  "servers": [
+    {
+      "url": "https://ww.keefer.de"
+    },
+    {
+      "url": "http://localhost:3000"
+    }
+  ],
+  "tags": [
+    {
+      "name": "wallpaper",
+      "description": "Get a random wallpaper"
+    },
+    {
+      "name": "tags",
+      "description": "Get all available tags"
+    }
+  ],
+  "paths": {
+    "/wallpaper": {
+      "get": {
+        "tags": [
+          "wallpaper"
+        ],
+        "summary": "Get a random wallpaper",
+        "description": "Get a semi random wallpaper (you can specify tags or a sync target)",
+        "operationId": "getWallpaper",
+        "parameters": [
+          {
+            "name": "sync",
+            "in": "query",
+            "description": "The sync target",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "The sync target",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagNotFound"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "wallpaper"
+        ],
+        "summary": "Add a new wallpaper",
+        "description": "Add a new wallpaper",
+        "operationId": "addWallpaper",
+        "requestBody": {
+          "description": "Add a new Wallpaper",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "Add some tags to your wallpaper",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          }
+        }
+      }
+    },
+    "/wallpaper/{wallpaper_name}": {
+      "get": {
+        "tags": [
+          "wallpaper"
+        ],
+        "summary": "Get a apecific wallpaper",
+        "description": "Get a specific wallpaper by its name",
+        "operationId": "getWallpaperByName",
+        "parameters": [
+          {
+            "name": "wallpaper_name",
+            "in": "path",
+            "description": "The exact name of the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagNotFound"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "wallpaper"
+        ],
+        "summary": "Update an existing wallpaper",
+        "description": "Update an existing wallpaper",
+        "operationId": "updateWallpaper",
+        "parameters": [
+          {
+            "name": "wallpaper_name",
+            "in": "path",
+            "description": "The exact name of the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "description": "The tags associated with the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "404": {
+            "description": "Specified wallpaper not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WallpaperNotFound"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallpaper/list": {
+      "get": {
+        "tags": [
+          "wallpaper"
+        ],
+        "summary": "get a list of all existing wallpaper",
+        "description": "Get a list of all existing wallpapers excluding the actual wallpaper",
+        "operationId": "getWallpaperList",
+        "responses": {
+          "200": {
+            "description": "Successful Operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "wallpapers": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/WallpaperInfo"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags": {
+      "get": {
+        "tags": [
+          "tags"
+        ],
+        "summary": "Get all existing tags",
+        "description": "Get all existing tags",
+        "operationId": "getTags",
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tags": {
+                      "$ref": "#/components/schemas/Tags"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TagNotFound": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Cant find a wallpaper with your tags"
+          }
+        },
+        "xml": {
+          "name": "tagError"
+        }
+      },
+      "Tags": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minItems": 0,
+          "maxItems": 10,
+          "enum": [
+            "scifi",
+            "fantasy"
+          ]
+        },
+        "xml": {
+          "name": "tags"
+        }
+      },
+      "WallpaperNotFound": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Cant find a wallpaper with your name"
+          }
+        },
+        "xml": {
+          "name": "wallpaperError"
+        }
+      },
+      "WallpaperInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "h234hbsd782g.jpg"
+          },
+          "tags": {
+            "$ref": "#/components/schemas/Tags"
+          }
+        },
+        "xml": {
+          "name": "wallpaperError"
+        }
+      }
+    }
+  }
+}

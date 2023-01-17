@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info:
+  title: Wallpaper Wizard
+  description: |-
+    This tool can help you to synchronize your wallpaper across all devices. Simply get a wallpaper by calling the endpoint. If you want to have more control check out the tags and sync option
+  contact:
+    email: lorenz.keefer@web.de
+  version: 0.0.1
+servers:
+  - url: https://ww.keefer.de
+  - url: http://localhost:3000
+tags:
+  - name: wallpaper
+    description: Get a random wallpaper
+  - name: tags
+    description: Get all available tags
+paths:
+  /wallpaper:
+    get:
+      tags:
+        - wallpaper
+      summary: Get a random wallpaper
+      description: Get a semi random wallpaper (you can specify tags or a sync target)
+      operationId: getWallpaper
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Pet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TagNotFound'
+    post:
+      tags:
+        - wallpaper
+      summary: Add a new wallpaper
+      description: Add a new wallpaper
+      operationId: addWallpaper
+      requestBody:
+        description: Add a new Wallpaper
+        content:
+          multipart/form-data:
+            schema:
+              type: string
+              format: binary
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          
+components:
+  schemas:
+    TagNotFound:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Cant find a wallpaper with your tags"
+      xml:
+        name: tagError
