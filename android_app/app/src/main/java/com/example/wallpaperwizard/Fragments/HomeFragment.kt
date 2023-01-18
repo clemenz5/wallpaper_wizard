@@ -1,5 +1,6 @@
 package com.example.wallpaperwizard.Fragments
 
+import android.accounts.NetworkErrorException
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -11,10 +12,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.RadioGroup.OnCheckedChangeListener
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.allViews
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.work.*
@@ -23,6 +26,7 @@ import com.example.wallpaperwizard.R
 import com.example.wallpaperwizard.Worker.WallpaperChangerWorker
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
+import com.google.android.material.chip.ChipGroup.OnCheckedStateChangeListener
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.GlobalScope
@@ -43,20 +47,20 @@ class HomeFragment : Fragment() {
     lateinit var date_viewer: TextView
     lateinit var notificationManager: NotificationManager
     lateinit var notiProvider: NotificationProvider
+    var selected_tags: MutableList<Chip> = mutableListOf()
+    var unselected_tags: MutableList<Chip> = mutableListOf()
+
 
     object RetrofitHelper {
         val baseUrl = "https://ww.keefer.de/"
         fun getInstance(): Retrofit {
             return Retrofit.Builder().baseUrl(baseUrl)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
+                .addConverterFactory(GsonConverterFactory.create()).build()
         }
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         return inflater.inflate(R.layout.fragment_home, container, false)
     }
@@ -71,8 +75,7 @@ class HomeFragment : Fragment() {
         notiProvider = NotificationProvider(context)
         notiProvider.createNotificationChannels(notificationManager)
         GlobalScope.run {
-            for (workInfo in WorkManager.getInstance(context).getWorkInfosByTag("upload")
-                .get()) {
+            for (workInfo in WorkManager.getInstance(context).getWorkInfosByTag("upload").get()) {
                 if (workInfo.state == WorkInfo.State.ENQUEUED) {
                     notificationManager.notify(
                         notiProvider.UPLOAD_PENDING_NOTIFICATION_ID,
@@ -81,8 +84,7 @@ class HomeFragment : Fragment() {
                 }
                 Log.d(
                     "worker_list",
-                    WorkManager.getInstance(context).getWorkInfosByTag("upload").get()
-                        .toString()
+                    WorkManager.getInstance(context).getWorkInfosByTag("upload").get().toString()
                 )
             }
         }
@@ -112,13 +114,57 @@ class HomeFragment : Fragment() {
         date_viewer.text = _sdfDateTime.format(Date())
         time_Viewer.text = _sdfWatchTime.format(Date())
 
-        fetchPopulateTags(preferred_tags, tagGroup, main_parent_view)
+        val fetchPopulateTagsCallback: OnTagsResultCallback = object : OnTagsResultCallback {
+            override fun onTagsResult(
+                selectedTags: List<Chip>, unselectedTags: List<Chip>, networkErrorCode: Int
+            ) {
+                if (networkErrorCode != 200) {
+                    Snackbar.make(
+                        main_parent_view,
+                        "Error while getting the Tags. Offline functionality will be implemented soon",
+                        Snackbar.LENGTH_LONG
+                    ).setAction("Retry") { view ->
+                        fetchTags(preferred_tags, this)
+                    }.show()
+                } else {
+                    selected_tags = selectedTags.toMutableList()
+                    unselected_tags = unselectedTags.toMutableList()
+                    populateTags(selectedTags, unselectedTags, tagGroup)
+                }
+                swipeRefreshView.isRefreshing = false
+            }
+        }
         swipeRefreshView.setOnRefreshListener { ->
-            fetchPopulateTags(preferred_tags, tagGroup, main_parent_view)
-            swipeRefreshView.isRefreshing = false
+            fetchTags(preferred_tags, fetchPopulateTagsCallback)
         }
 
+        fetchTags(preferred_tags, fetchPopulateTagsCallback)
 
+        tagGroup.setOnCheckedStateChangeListener(object : OnCheckedStateChangeListener {
+            override fun onCheckedChanged(group: ChipGroup, checkedIds: MutableList<Int>) {
+
+                var new_selected_tags: MutableList<Chip> = mutableListOf()
+                var new_unselected_tags: MutableList<Chip> = mutableListOf()
+                for (chip in selected_tags) {
+                    if(chip.id in checkedIds){
+                        new_selected_tags.add(chip)
+                    } else {
+                        new_unselected_tags.add(chip)
+                    }
+                }
+                for (chip in unselected_tags) {
+                    if(chip.id in checkedIds){
+                        new_selected_tags.add(chip)
+                    } else {
+                        new_unselected_tags.add(chip)
+                    }
+                }
+                populateTags(new_selected_tags, new_unselected_tags, tagGroup)
+                selected_tags = new_selected_tags
+                unselected_tags = new_unselected_tags
+            }
+
+        })
 
         applyConfig.setOnClickListener { view ->
             var saved_tags = ""
@@ -144,34 +190,21 @@ class HomeFragment : Fragment() {
         }
     }
 
-    fun fetchPopulateTags(
+    private fun fetchTags(
         preferred_tags: List<String>,
-        tagGroup: ChipGroup,
-        main_parent_view: View
+        resultCallback: OnTagsResultCallback,
     ) {
         val wallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
         wallpaperApi.getTags().enqueue(object : Callback<TagsResult> {
             override fun onResponse(call: Call<TagsResult>, response: Response<TagsResult>) {
                 Log.d("tags_response", response.toString())
                 if (response.code() != 200) {
-                    Snackbar.make(
-                        main_parent_view,
-                        "Error while getting the Tags - Server returned " + response.code()
-                            .toString(),
-                        Snackbar.LENGTH_LONG
-                    ).setAction("Retry") { view ->
-                        fetchPopulateTags(
-                            preferred_tags,
-                            tagGroup,
-                            main_parent_view
-                        )
-                    }.show()
+                    resultCallback.onTagsResult(listOf(), listOf(), response.code())
                     return
                 }
                 val tags = response.body()!!.tags
-
-                Log.d("network_response", tags.toList().toString())
-                tagGroup.removeAllViews()
+                val selected_tags: MutableList<Chip> = mutableListOf()
+                val unselected_tags: MutableList<Chip> = mutableListOf()
                 for (tag in tags) {
                     val view = Chip(
                         requireContext(),
@@ -182,30 +215,31 @@ class HomeFragment : Fragment() {
                     view.id = ViewCompat.generateViewId()
                     view.isCheckable = true
                     view.isClickable = true
+
                     if (tag in preferred_tags) {
                         view.isChecked = true
-                    }
-                    requireActivity().runOnUiThread {
-                        tagGroup.addView(view)
+                        selected_tags.add(view)
+                    } else {
+                        unselected_tags.add(view)
                     }
                 }
+                resultCallback.onTagsResult(selected_tags, unselected_tags, 200)
             }
 
             override fun onFailure(call: Call<TagsResult>, t: Throwable) {
-                Snackbar.make(
-                    main_parent_view,
-                    "Error while getting the Tags. Offline functionality will be implemented soon",
-                    Snackbar.LENGTH_LONG
-                ).setAction("Retry") { view ->
-                    fetchPopulateTags(
-                        preferred_tags,
-                        tagGroup,
-                        main_parent_view
-                    )
-                }.show()
+                resultCallback.onTagsResult(listOf(), listOf(), 500)
             }
-
         })
+    }
+
+    fun populateTags(selectedTags: List<Chip>, unselectedTags: List<Chip>, tagGroup: ChipGroup) {
+        tagGroup.removeAllViews()
+        for (chip in selectedTags) {
+            tagGroup.addView(chip)
+        }
+        for (chip in unselectedTags) {
+            tagGroup.addView(chip)
+        }
     }
 
     override fun onStart() {
@@ -228,5 +262,10 @@ class HomeFragment : Fragment() {
     }
 
 
+    interface OnTagsResultCallback {
+        fun onTagsResult(
+            selectedTags: List<Chip>, unselectedTags: List<Chip>, networkErrorCode: Int
+        )
+    }
 }
 
