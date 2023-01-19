@@ -58,10 +58,7 @@ class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters
         val notificationManager = NotificationManagerCompat.from(this.applicationContext)
         notificationManager.notify(0, builder.build())
 
-        var tags_string = ""
-        for (tag in inputData.getStringArray("tags")!!){
-            tags_string += "$tag;"
-        }
+        var tags_string = inputData.getStringArray("download_tags")!!.joinToString(prefix = "", separator = ";", postfix="")
 
         val wallpaperApi =
             RetrofitHelper.getInstance().create(WallpaperApi::class.java)
@@ -73,8 +70,6 @@ class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters
 
         Log.d("request_url", request.request().url.toString())
         val result = request.execute()
-
-
 
         val inputStream = result.body()!!.byteStream()
         val bitmap = BitmapFactory.decodeStream(inputStream)

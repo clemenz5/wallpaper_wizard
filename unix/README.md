@@ -15,5 +15,5 @@ There are many ways to install this. One is
 The script will be systemwide accessible with the shortcut `gw`
 
 ## Upload
-You can use the upload script. As arguments, give url, a directory and some tags (separeted by ";") in that order. 
+You can use the post_wallpaper script. As arguments, give url, a directory and some tags (separeted by ";") in that order. 
 The script will then upload all JPG files to the server

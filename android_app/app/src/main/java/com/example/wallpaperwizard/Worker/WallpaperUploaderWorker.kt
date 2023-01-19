@@ -46,7 +46,7 @@ class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParam
         val request_file = upload_file.asRequestBody("multipart/form-data".toMediaTypeOrNull())
         val multipart_file =
             MultipartBody.Part.createFormData("image", upload_file.name, request_file);
-        val request = wallpaperApi.uploadWallpaper(multipart_file, "upload_test")
+        val request = wallpaperApi.uploadWallpaper(multipart_file, inputData.getStringArray("upload_tags")!!.joinToString(prefix = "", separator = ";", postfix=""))
         Log.d("upload_request", request.request().body!!.toString())
         val response = request.execute()
 

@@ -1,5 +1,6 @@
 package com.example.wallpaperwizard.Fragments
 
+import android.accounts.NetworkErrorException
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -11,18 +12,22 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.RadioGroup.OnCheckedChangeListener
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.allViews
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.work.*
 import com.example.wallpaperwizard.*
+import com.example.wallpaperwizard.Components.TagGroup.TagGroup
 import com.example.wallpaperwizard.R
 import com.example.wallpaperwizard.Worker.WallpaperChangerWorker
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
+import com.google.android.material.chip.ChipGroup.OnCheckedStateChangeListener
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.GlobalScope
@@ -33,6 +38,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.stream.Collectors
 
 
 class HomeFragment : Fragment() {
@@ -43,20 +49,20 @@ class HomeFragment : Fragment() {
     lateinit var date_viewer: TextView
     lateinit var notificationManager: NotificationManager
     lateinit var notiProvider: NotificationProvider
+    val wallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
+    lateinit var tagsResultCallback: Callback<TagsResult>
+
 
     object RetrofitHelper {
         val baseUrl = "https://ww.keefer.de/"
         fun getInstance(): Retrofit {
             return Retrofit.Builder().baseUrl(baseUrl)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
+                .addConverterFactory(GsonConverterFactory.create()).build()
         }
     }
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         return inflater.inflate(R.layout.fragment_home, container, false)
     }
@@ -71,8 +77,7 @@ class HomeFragment : Fragment() {
         notiProvider = NotificationProvider(context)
         notiProvider.createNotificationChannels(notificationManager)
         GlobalScope.run {
-            for (workInfo in WorkManager.getInstance(context).getWorkInfosByTag("upload")
-                .get()) {
+            for (workInfo in WorkManager.getInstance(context).getWorkInfosByTag("upload").get()) {
                 if (workInfo.state == WorkInfo.State.ENQUEUED) {
                     notificationManager.notify(
                         notiProvider.UPLOAD_PENDING_NOTIFICATION_ID,
@@ -81,8 +86,7 @@ class HomeFragment : Fragment() {
                 }
                 Log.d(
                     "worker_list",
-                    WorkManager.getInstance(context).getWorkInfosByTag("upload").get()
-                        .toString()
+                    WorkManager.getInstance(context).getWorkInfosByTag("upload").get().toString()
                 )
             }
         }
@@ -101,28 +105,55 @@ class HomeFragment : Fragment() {
         val tagsPrefsKey = "tags_preferences"
         val syncPrefsKey = "sync_preferences"
 
-        val preferred_tags = prefs.getString(tagsPrefsKey, "")!!.split(";")
+        val preferred_tags = prefs.getString(tagsPrefsKey, "")!!.split(";").stream().filter { str -> str != ""}.collect(Collectors.toList())
         val preferred_sync = prefs.getString(syncPrefsKey, "")
 
         val syncInput: EditText = parent.findViewById(R.id.sync_input)
         syncInput.setText(preferred_sync)
-        val tagGroup: ChipGroup = parent.findViewById(R.id.tag_group)
+        val tagGroup: TagGroup = parent.findViewById(R.id.tag_group)
         time_Viewer = parent.findViewById(R.id.time_viewer)
         date_viewer = parent.findViewById(R.id.date_viewer)
         date_viewer.text = _sdfDateTime.format(Date())
         time_Viewer.text = _sdfWatchTime.format(Date())
 
-        fetchPopulateTags(preferred_tags, tagGroup, main_parent_view)
+        tagsResultCallback = object : Callback<TagsResult> {
+            fun errorHandle(){
+                Snackbar.make(
+                    main_parent_view,
+                    "Error while getting the Tags. Offline functionality will be implemented soon",
+                    Snackbar.LENGTH_LONG
+                ).setAction("Retry") { view ->
+                    wallpaperApi.getTags().enqueue(this)
+                }.show()
+            }
+
+            override fun onResponse(call: Call<TagsResult>, response: Response<TagsResult>) {
+                swipeRefreshView.isRefreshing = false
+                if (response.code() == 200) {
+                    Log.d("tags_response", response.body()!!.tags.toList().toString())
+                    tagGroup.setTags(response.body()!!.tags, preferred_tags.toTypedArray())
+                } else {
+                    errorHandle()
+                }
+            }
+
+            override fun onFailure(call: Call<TagsResult>, t: Throwable) {
+                swipeRefreshView.isRefreshing = false
+                errorHandle()
+            }
+        }
+
+        wallpaperApi.getTags().enqueue(tagsResultCallback)
+
         swipeRefreshView.setOnRefreshListener { ->
-            fetchPopulateTags(preferred_tags, tagGroup, main_parent_view)
-            swipeRefreshView.isRefreshing = false
+            wallpaperApi.getTags().enqueue(tagsResultCallback)
         }
 
 
 
         applyConfig.setOnClickListener { view ->
             var saved_tags = ""
-            for (id in tagGroup.checkedChipIds) {
+            for (id in tagGroup.tagGroup.checkedChipIds) {
                 val chip = parent.findViewById<Chip>(id)
                 saved_tags += chip.text
                 saved_tags += ";"
@@ -135,7 +166,7 @@ class HomeFragment : Fragment() {
             val syncString = syncInput.text.toString()
             val downloadWorkRequest: WorkRequest =
                 OneTimeWorkRequestBuilder<WallpaperChangerWorker>().setInputData(
-                    Data.Builder().putStringArray("tags", preferred_tags.toTypedArray())
+                    Data.Builder().putStringArray("download_tags", tagGroup.getSelectedTags())
                         .putString("sync", syncString).build()
                 ).build()
             WorkManager.getInstance(context).enqueue(downloadWorkRequest)
@@ -144,69 +175,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    fun fetchPopulateTags(
-        preferred_tags: List<String>,
-        tagGroup: ChipGroup,
-        main_parent_view: View
-    ) {
-        val wallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
-        wallpaperApi.getTags().enqueue(object : Callback<TagsResult> {
-            override fun onResponse(call: Call<TagsResult>, response: Response<TagsResult>) {
-                Log.d("tags_response", response.toString())
-                if (response.code() != 200) {
-                    Snackbar.make(
-                        main_parent_view,
-                        "Error while getting the Tags - Server returned " + response.code()
-                            .toString(),
-                        Snackbar.LENGTH_LONG
-                    ).setAction("Retry") { view ->
-                        fetchPopulateTags(
-                            preferred_tags,
-                            tagGroup,
-                            main_parent_view
-                        )
-                    }.show()
-                    return
-                }
-                val tags = response.body()!!.tags
-
-                Log.d("network_response", tags.toList().toString())
-                tagGroup.removeAllViews()
-                for (tag in tags) {
-                    val view = Chip(
-                        requireContext(),
-                        null,
-                        com.google.android.material.R.style.Widget_MaterialComponents_Chip_Filter
-                    )
-                    view.text = tag
-                    view.id = ViewCompat.generateViewId()
-                    view.isCheckable = true
-                    view.isClickable = true
-                    if (tag in preferred_tags) {
-                        view.isChecked = true
-                    }
-                    requireActivity().runOnUiThread {
-                        tagGroup.addView(view)
-                    }
-                }
-            }
-
-            override fun onFailure(call: Call<TagsResult>, t: Throwable) {
-                Snackbar.make(
-                    main_parent_view,
-                    "Error while getting the Tags. Offline functionality will be implemented soon",
-                    Snackbar.LENGTH_LONG
-                ).setAction("Retry") { view ->
-                    fetchPopulateTags(
-                        preferred_tags,
-                        tagGroup,
-                        main_parent_view
-                    )
-                }.show()
-            }
-
-        })
-    }
 
     override fun onStart() {
         super.onStart()
@@ -226,7 +194,5 @@ class HomeFragment : Fragment() {
         super.onStop()
         requireContext().unregisterReceiver(_broadcastReceiver)
     }
-
-
 }
 

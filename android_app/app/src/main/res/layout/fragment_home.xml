@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:custom="http://schemas.android.com/apk/com.example.wallpaperwizard.Components.TagGroup.TagGroup"
     android:id="@+id/main_parent_view"
     style="@style/Theme.WallpaperWizard"
     android:layout_width="match_parent"
@@ -16,6 +17,7 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
+
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -87,35 +89,11 @@
                     android:fontFamily="@font/arimo"
                     android:hint="@string/sync" />
 
-                <LinearLayout
+                <com.example.wallpaperwizard.Components.TagGroup.TagGroup
+                    android:id="@+id/tag_group"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="30dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/heebo"
-                        android:shadowColor="@color/black"
-                        android:shadowDx="0"
-                        android:shadowDy="0"
-                        android:shadowRadius="10"
-                        android:text="@string/tags"
-                        android:textColor="@color/white"
-                        android:textSize="10pt"
-                        android:textStyle="bold">
-
-
-                    </TextView>
-
-                    <com.google.android.material.chip.ChipGroup
-                        android:id="@+id/tag_group"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        app:singleLine="false" />
-                </LinearLayout>
-
+                    app:editable="false" />
 
             </LinearLayout>
 
