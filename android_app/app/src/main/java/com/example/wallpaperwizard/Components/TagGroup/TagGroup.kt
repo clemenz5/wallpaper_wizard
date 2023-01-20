@@ -1,8 +1,12 @@
 package com.example.wallpaperwizard.Components.TagGroup
 
 import android.content.Context
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.AttributeSet
 import android.view.View
+import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import androidx.core.view.ViewCompat
 import com.example.wallpaperwizard.R
@@ -13,14 +17,17 @@ import java.util.stream.Collectors
 class TagGroup(context: Context, attributeSet: AttributeSet?) :
     LinearLayout(context, attributeSet) {
     var tagGroup: ChipGroup
-    lateinit var selectedChips: List<Chip>
-    lateinit var unselectedChips: List<Chip>
+    lateinit var selectedChips: MutableList<Chip>
+    lateinit var unselectedChips: MutableList<Chip>
     var tags = arrayOf<String>()
     var preferredTags = arrayOf<String>()
+    var searchTag: String = ""
 
     init {
         inflate(context, R.layout.tag_group_layout, this)
         tagGroup = findViewById(R.id.chip_group)
+        val addButton = findViewById<ImageButton>(R.id.tag_layout_add)
+        val searchInput = findViewById<EditText>(R.id.tag_group_search_input)
 
         context.theme.obtainStyledAttributes(
             attributeSet,
@@ -28,7 +35,10 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
             0, 0
         ).apply {
             try {
-                var editable = getBoolean(R.styleable.TagGroup_editable, false)
+                val editable = getBoolean(R.styleable.TagGroup_editable, false)
+                if (!editable) {
+                    addButton.visibility = GONE
+                }
             } finally {
                 recycle()
             }
@@ -38,7 +48,8 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
 
         tagGroup.setOnCheckedStateChangeListener(object : ChipGroup.OnCheckedStateChangeListener {
             override fun onCheckedChanged(group: ChipGroup, checkedIds: MutableList<Int>) {
-
+                searchTag = ""
+                searchInput.setText(searchTag)
                 var newSelectedChips: MutableList<Chip> = mutableListOf()
                 var newUnselectedChips: MutableList<Chip> = mutableListOf()
                 for (chip in selectedChips) {
@@ -57,6 +68,42 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
                 }
                 selectedChips = newSelectedChips
                 unselectedChips = newUnselectedChips
+                populateChips()
+            }
+
+        })
+
+        addButton.setOnClickListener{
+            if(searchInput.text.isNotEmpty()){
+                val view = Chip(
+                    context,
+                    null,
+                    com.google.android.material.R.style.Widget_MaterialComponents_Chip_Filter
+                )
+                view.text = searchInput.text
+                view.id = ViewCompat.generateViewId()
+                view.isCheckable = true
+                view.isClickable = true
+                view.isChecked = true
+                selectedChips.add(view)
+                searchInput.setText("")
+                populateChips()
+
+            }
+
+        }
+
+        searchInput.addTextChangedListener(object: TextWatcher {
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+
+            }
+
+            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+
+            }
+
+            override fun afterTextChanged(p0: Editable?) {
+                searchTag = p0.toString()
                 populateChips()
             }
 
@@ -101,11 +148,7 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
 
     private fun populateChips() {
         tagGroup.removeAllViews()
-        for (chip in selectedChips) {
-            tagGroup.addView(chip)
-        }
-        for (chip in unselectedChips) {
-            tagGroup.addView(chip)
-        }
+        selectedChips.stream().filter{chip -> chip.text.contains(searchTag)}.forEach{chip -> tagGroup.addView(chip)}
+        unselectedChips.stream().filter{chip -> chip.text.contains(searchTag)}.forEach{chip -> tagGroup.addView(chip)}
     }
 }

@@ -1,6 +1,5 @@
 package com.example.wallpaperwizard.Fragments
 
-import android.accounts.NetworkErrorException
 import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -12,22 +11,20 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
-import android.widget.RadioGroup.OnCheckedChangeListener
 import android.widget.RelativeLayout
 import android.widget.TextView
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
-import androidx.core.view.ViewCompat
-import androidx.core.view.allViews
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.work.*
-import com.example.wallpaperwizard.*
 import com.example.wallpaperwizard.Components.TagGroup.TagGroup
+import com.example.wallpaperwizard.NotificationProvider
 import com.example.wallpaperwizard.R
+import com.example.wallpaperwizard.TagsResult
+import com.example.wallpaperwizard.WallpaperApi
 import com.example.wallpaperwizard.Worker.WallpaperChangerWorker
 import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
-import com.google.android.material.chip.ChipGroup.OnCheckedStateChangeListener
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.GlobalScope
@@ -93,10 +90,7 @@ class HomeFragment : Fragment() {
 
         val swipeRefreshView: SwipeRefreshLayout = parent.findViewById(R.id.swipe_refresh_view)
         val applyConfig: FloatingActionButton = parent.findViewById(R.id.applyConfig)
-        val main_parent_view: RelativeLayout = parent.findViewById(R.id.main_parent_view)
-        val add_wallpaper_button: FloatingActionButton = parent.findViewById(R.id.addWallpaper)
-        add_wallpaper_button.setOnClickListener { view ->
-        }
+        val main_parent_view: ConstraintLayout = parent.findViewById(R.id.main_parent_view)
 
 
         val prefs = context.getSharedPreferences(
