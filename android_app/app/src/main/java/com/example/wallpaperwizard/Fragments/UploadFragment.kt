@@ -16,6 +16,7 @@ import android.view.ViewGroup
 import android.widget.RelativeLayout
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
@@ -68,8 +69,9 @@ class UploadFragment : Fragment() {
             WorkManager.getInstance(context).getWorkInfosByTag("upload").get().toString()
         )
 
-        val main_parent_view: RelativeLayout = parent.findViewById(R.id.upload_parent_view)
+        val main_parent_view: ConstraintLayout = parent.findViewById(R.id.upload_parent_view)
         val tagGroup: TagGroup = parent.findViewById(R.id.upload_tag_group)
+        val swipeRefreshLayout = parent.findViewById<SwipeRefreshLayout>(R.id.upload_swipe_refresh_layout)
 
         val prefs = context.getSharedPreferences(
             "wallpaper_wizard.preferences", Context.MODE_PRIVATE
@@ -107,6 +109,10 @@ class UploadFragment : Fragment() {
         }
 
         wallpaperApi.getTags().enqueue(tagsResultCallback)
+        swipeRefreshLayout.setOnRefreshListener {
+            wallpaperApi.getTags().enqueue(tagsResultCallback)
+            swipeRefreshLayout.isRefreshing = false
+        }
 
 
         val wallpaper_preview = parent.findViewById<TouchImageView>(R.id.wallpaper_preview)
