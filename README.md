@@ -15,3 +15,9 @@ I'd love to get into that, but I don't have the right Hardware :(
 
 ## Windows App
 Not in development right now, but I will do that at some point
+
+## Server
+You want to deploy your own wallpaper wizard server? Great! Just pull the docker image, expose port 3000 and mount a volume in /wallpaper_wizard/data.
+```
+docker start -v wallpaper_wizard:/wallpaper_wizard/data --name=wallpaper_wizard -p 80:3000 -d wallpaper_wizard
+```
