@@ -10,6 +10,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.EditText
 import android.widget.RelativeLayout
 import android.widget.TextView
@@ -56,6 +57,13 @@ class HomeFragment : Fragment() {
             return Retrofit.Builder().baseUrl(baseUrl)
                 .addConverterFactory(GsonConverterFactory.create()).build()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        requireActivity().getWindow().addFlags(
+            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
+        );
     }
 
     override fun onCreateView(
