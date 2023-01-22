@@ -73,8 +73,15 @@ app.get("/tags", (req, res) => {
       tags.push(...row.tags.split(";"));
     }
     tags = Array.from(new Set(tags));
+    console.log(tags);
+    let return_tags = [];
+    for (let tag in tags) {
+      if (tags[tag] !== "") {
+        return_tags.push(tags[tag]);
+      }
+    }
     res.statusCode = 200;
-    res.send(JSON.stringify({ tags: tags }));
+    res.send(JSON.stringify({ tags: return_tags }));
   });
 });
 
@@ -89,10 +96,10 @@ app.get("/wallpaper/list", (req, res) => {
         })
       );
     }
-    wallpaper_info_array = []
+    wallpaper_info_array = [];
     for (let row of results) {
-      tags = row.tags.split(";")
-      wallpaper_info_array.push({name: row.name, tags: tags})
+      tags = row.tags.split(";");
+      wallpaper_info_array.push({ name: row.name, tags: tags });
     }
     res.statusCode = 200;
     res.send(JSON.stringify({ wallpapers: wallpaper_info_array }));
@@ -100,34 +107,33 @@ app.get("/wallpaper/list", (req, res) => {
 });
 
 app.get("/wallpaper/:wallpaperName", (req, res) => {
-  connection.all(`SELECT * FROM wallpaper WHERE name='${req.params.wallpaperName}';`, (error, results) => {
-    if (error || results.length == 0) {
-      res.statusCode = 404;
-      res.send(
-        JSON.stringify({
-          message: "An Error occured while querying for the wallpaper",
-          error: error,
-        })
-      );
+  connection.all(
+    `SELECT * FROM wallpaper WHERE name='${req.params.wallpaperName}';`,
+    (error, results) => {
+      if (error || results.length == 0) {
+        res.statusCode = 404;
+        res.send(
+          JSON.stringify({
+            message: "An Error occured while querying for the wallpaper",
+            error: error,
+          })
+        );
+      }
+      res.statusCode = 200;
+      res.header("crop", chosen_wallpaper.crop)
+      res.sendFile(`${pwd}/data/uploads/${results[0].name}`);
     }
-    res.statusCode = 200;
-    res.sendFile(
-      `${pwd}/data/uploads/${results[0].name}`
-    );
-  });
+  );
 });
 
 app.get("/wallpaper", (req, res) => {
-  if (req.query.sync != undefined) {
+  if (req.query.sync) {
     connection.all(
       `SELECT * FROM sync WHERE date >=  datetime('now', '-1 day') AND sync_name='${req.query.sync}' ORDER BY date DESC LIMIT 1;`,
       (error, results) => {
         if (error) throw error;
         if (results.length == 0) {
-          var tags = [];
-          if (req.query.tags != undefined) {
-            tags = req.query.tags.split(";");
-          }
+          var tags = req.query.tags ? req.query.tags.split(";") : [];
           getWallpaperByTags(tags, (error, results) => {
             if (error) throw error;
             if (results.length == 0) {
@@ -150,6 +156,7 @@ app.get("/wallpaper", (req, res) => {
                       })
                     );
                   } else {
+                    res.header("crop", chosen_wallpaper.crop)
                     res.sendFile(
                       `${pwd}/data/uploads/${chosen_wallpaper.name}`
                     );
@@ -161,6 +168,7 @@ app.get("/wallpaper", (req, res) => {
         } else {
           let chosen_wallpaper = results[0];
           let pwd = process.cwd();
+          res.header("crop", chosen_wallpaper.crop)
           res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.wallpaper}`);
         }
       }
@@ -185,6 +193,7 @@ app.get("/wallpaper", (req, res) => {
         connection.all(
           `INSERT INTO sync (sync_name, date, wallpaper) VALUES ('${req.query.sync}', CURRENT_TIMESTAMP, '${chosen_wallpaper.name}');`,
           (error, results) => {
+            res.header("crop", chosen_wallpaper.crop)
             res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.name}`);
           }
         );
@@ -193,15 +202,23 @@ app.get("/wallpaper", (req, res) => {
   }
 });
 
+app.get("/crop/:wallpaper_name", (req, res) => {
+  connection.all(`SELECT crop FROM wallpaper WHERE name='${wallpaper_name}'`)
+});
+
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.post("/wallpaper", upload.single("image"), (req, res) => {
   console.log(req.file);
   console.log(req.query);
+  let tags = req.query.tags.endsWith(";")
+    ? req.query.tags.substring(0, req.query.tags.length - 1)
+    : req.query.tags;
+  let crop = req.query.crop ? req.query.crop : ""
   connection.run(
     `
-    INSERT INTO wallpaper (name, tags)
-    VALUES ('${req.filename}', '${req.query.tags}');
+    INSERT INTO wallpaper (name, tags, crop)
+    VALUES ('${req.filename}', '${tags}', '${crop}');
   `,
     (error) => {
       if (error) throw error;
@@ -239,7 +256,8 @@ app.listen(3000, () => {
           `
         CREATE TABLE wallpaper (
           name VARCHAR(255) NOT NULL,
-	  tags VARCHAR(255) NOT NULL
+	  tags VARCHAR(255) NOT NULL,
+    crop VARCHAR(255) NOT NULL
         )
       `,
           (error) => {
