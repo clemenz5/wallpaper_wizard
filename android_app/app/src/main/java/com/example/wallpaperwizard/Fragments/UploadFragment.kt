@@ -5,6 +5,7 @@ import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.os.Bundle
 import android.util.Log
@@ -46,6 +47,7 @@ class UploadFragment : Fragment() {
     lateinit var notiProvider: NotificationProvider
     lateinit var tagsResultCallback: Callback<TagsResult>
     val wallpaperApi = HomeFragment.RetrofitHelper.getInstance().create(WallpaperApi::class.java)
+    lateinit var current_bitmap : Bitmap
 
 
     override fun onCreateView(
@@ -144,12 +146,12 @@ class UploadFragment : Fragment() {
                 Log.d("selection", result.data!!.data.toString())
                 val source =
                     ImageDecoder.createSource(context.contentResolver, result.data!!.data!!)
-                val bitmap = ImageDecoder.decodeBitmap(source)
+                current_bitmap = ImageDecoder.decodeBitmap(source)
 
                 var filePath: String = RealPathUtil.getRealPath(context, result.data!!.data!!)!!
                 upload_file_url = filePath
                 wallpaper_preview.setImageBitmap(
-                    bitmap
+                    current_bitmap
                 )
             }
         }
@@ -172,10 +174,12 @@ class UploadFragment : Fragment() {
             )
             val constraints: Constraints =
                 Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+
+            val crop = "${wallpaper_preview.zoomedRect.left * current_bitmap.width},${wallpaper_preview.zoomedRect.top* current_bitmap.height},${wallpaper_preview.zoomedRect.right * current_bitmap.width},${wallpaper_preview.zoomedRect.bottom * current_bitmap.height}"
             val upload_work_request: WorkRequest =
                 OneTimeWorkRequestBuilder<WallpaperUploaderWorker>().setInputData(
                     Data.Builder().putString("upload_file_url", upload_file_url)
-                        .putString("rect", wallpaper_preview.zoomedRect.toString()).putStringArray("upload_tags", tagGroup.getSelectedTags()).build()
+                        .putString("rect", wallpaper_preview.zoomedRect.toString()).putStringArray("upload_tags", tagGroup.getSelectedTags()).putString("crop_preference", crop).build()
                 ).setConstraints(constraints).addTag("upload")
                     .build()
             WorkManager.getInstance(context).enqueue(upload_work_request)

@@ -51,7 +51,7 @@ class HomeFragment : Fragment() {
 
 
     object RetrofitHelper {
-        val baseUrl = "https://ww.keefer.de/"
+        val baseUrl = "https://ww.keefer.de"
         fun getInstance(): Retrofit {
             return Retrofit.Builder().baseUrl(baseUrl)
                 .addConverterFactory(GsonConverterFactory.create()).build()

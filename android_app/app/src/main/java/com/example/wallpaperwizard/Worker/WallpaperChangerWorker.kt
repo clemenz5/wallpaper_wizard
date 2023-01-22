@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.WallpaperManager
 import android.content.Context
 import android.graphics.BitmapFactory
+import android.graphics.Rect
 import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -20,7 +21,7 @@ import retrofit2.Retrofit
 class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters) :
     Worker(appContext, workerParams) {
     object RetrofitHelper {
-        val baseUrl = "https://ww.keefer.de/"
+        val baseUrl = "https://ww.keefer.de"
 
         fun getInstance(): Retrofit {
             return Retrofit.Builder().baseUrl(baseUrl)
@@ -76,7 +77,16 @@ class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters
         inputStream.close()
 
         val wallpaperManager = WallpaperManager.getInstance(this.applicationContext)
-        wallpaperManager.setBitmap(bitmap)
+        val crop = result.headers().get("crop")?.split(",")
+
+        if (crop != null) {
+            Log.d("crop_rect", crop.get(0).toFloat().toString())
+            val crop_rect = Rect(crop.get(0).toFloat().toInt(), crop.get(1).toFloat().toInt(), crop.get(2).toFloat().toInt(), crop.get(3).toFloat().toInt())
+            Log.d("crop_rect", crop_rect.toString())
+            wallpaperManager.setBitmap(bitmap, crop_rect, true)
+        } else {
+            wallpaperManager.setBitmap(bitmap, null, true)
+        }
 
         notificationManager.cancel(0)
 

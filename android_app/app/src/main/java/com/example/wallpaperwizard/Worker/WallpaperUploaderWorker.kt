@@ -21,7 +21,7 @@ class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParam
     lateinit var notificationProvider: NotificationProvider
     val notiProvider = NotificationProvider(applicationContext)
     object RetrofitHelper {
-        val baseUrl = "https://ww.keefer.de/"
+        val baseUrl = "https://ww.keefer.de"
         fun getInstance(): Retrofit {
             return Retrofit.Builder().baseUrl(baseUrl)
                 .build()
@@ -40,14 +40,13 @@ class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParam
         notificationManager.cancel(notiProvider.UPLOAD_PENDING_NOTIFICATION_ID)
         notificationManager.notify(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID, notiProvider.UPLOAD_RUNNING_NOTIFICATION)
 
-        val wallpaperApi =
-            WallpaperChangerWorker.RetrofitHelper.getInstance().create(WallpaperApi::class.java)
+        val wallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
         val upload_file = File(inputData.getString("upload_file_url"))
         val request_file = upload_file.asRequestBody("multipart/form-data".toMediaTypeOrNull())
         val multipart_file =
             MultipartBody.Part.createFormData("image", upload_file.name, request_file);
-        val request = wallpaperApi.uploadWallpaper(multipart_file, inputData.getStringArray("upload_tags")!!.joinToString(prefix = "", separator = ";", postfix=""))
-        Log.d("upload_request", request.request().body!!.toString())
+        val request = wallpaperApi.uploadWallpaper(multipart_file, inputData.getStringArray("upload_tags")!!.joinToString(prefix = "", separator = ";", postfix=""), inputData.getString("crop_preference")!!)
+        Log.d("upload_request", request.request().url.toString())
         val response = request.execute()
 
         if (response.isSuccessful) {
