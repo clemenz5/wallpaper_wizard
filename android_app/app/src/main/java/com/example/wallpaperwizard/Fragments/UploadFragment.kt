@@ -5,21 +5,20 @@ import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.MotionEvent
-import android.view.View
+import android.view.*
 import android.view.View.OnTouchListener
-import android.view.ViewGroup
 import android.widget.RelativeLayout
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.viewpager2.widget.ViewPager2
@@ -153,13 +152,24 @@ class UploadFragment : Fragment() {
                 wallpaper_preview.setImageBitmap(
                     current_bitmap
                 )
+                requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
+                );
             }
         }
         button_select_wallpaper.setOnClickListener { view ->
-            val intent = Intent()
-            intent.type = "image/*"
-            intent.action = Intent.ACTION_GET_CONTENT
-            startForResult.launch(intent)
+            if (checkSelfPermission(context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                val intent = Intent()
+                intent.type = "image/*"
+                intent.action = Intent.ACTION_GET_CONTENT
+                startForResult.launch(intent)
+            } else {
+                Snackbar.make(
+                    main_parent_view,
+                    "Please allow this app to access your storage",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            }
+
 
         }
 
@@ -168,44 +178,74 @@ class UploadFragment : Fragment() {
                 "selected_tags",
                 tagGroup.getSelectedTags().toList().toString()
             )
-            Log.d(
-                "worker_list",
-                WorkManager.getInstance(context).getWorkInfosByTag("upload").get().toString()
-            )
-            val constraints: Constraints =
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+            if (!this::current_bitmap.isInitialized){
+                Snackbar.make(
+                    main_parent_view,
+                    "Please select a wallpaper",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            } else {
+                val constraints: Constraints =
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
-            val crop = "${wallpaper_preview.zoomedRect.left * current_bitmap.width},${wallpaper_preview.zoomedRect.top* current_bitmap.height},${wallpaper_preview.zoomedRect.right * current_bitmap.width},${wallpaper_preview.zoomedRect.bottom * current_bitmap.height}"
-            val upload_work_request: WorkRequest =
-                OneTimeWorkRequestBuilder<WallpaperUploaderWorker>().setInputData(
-                    Data.Builder().putString("upload_file_url", upload_file_url)
-                        .putString("rect", wallpaper_preview.zoomedRect.toString()).putStringArray("upload_tags", tagGroup.getSelectedTags()).putString("crop_preference", crop).build()
-                ).setConstraints(constraints).addTag("upload")
-                    .build()
-            WorkManager.getInstance(context).enqueue(upload_work_request)
+                val crop = "${wallpaper_preview.zoomedRect.left * current_bitmap.width},${wallpaper_preview.zoomedRect.top* current_bitmap.height},${wallpaper_preview.zoomedRect.right * current_bitmap.width},${wallpaper_preview.zoomedRect.bottom * current_bitmap.height}"
+                val upload_work_request: WorkRequest =
+                    OneTimeWorkRequestBuilder<WallpaperUploaderWorker>().setInputData(
+                        Data.Builder().putString("upload_file_url", upload_file_url)
+                            .putString("rect", wallpaper_preview.zoomedRect.toString()).putStringArray("upload_tags", tagGroup.getSelectedTags()).putString("crop_preference", crop).build()
+                    ).setConstraints(constraints).addTag("upload")
+                        .build()
+                WorkManager.getInstance(context).enqueue(upload_work_request)
 
-            WorkManager.getInstance(context).getWorkInfoByIdLiveData(upload_work_request.id)
-                .observeForever { workInfo ->
-                    if (workInfo != null && workInfo.state == WorkInfo.State.ENQUEUED) {
-                        val notificationManager =
-                            NotificationManagerCompat.from(context)
-                        notificationManager.notify(
-                            notiProvider.UPLOAD_PENDING_NOTIFICATION_ID,
-                            notiProvider.UPLOAD_PENDING_NOTIFICATION
-                        )
-                    }
-                    if (workInfo != null && workInfo.state.isFinished) {
-                        if (workInfo.state == WorkInfo.State.SUCCEEDED) {
+                Snackbar.make(
+                    main_parent_view,
+                    "Uploading your wallpaper",
+                    Snackbar.LENGTH_LONG
+                ).show()
 
-                        } else {
-
+                WorkManager.getInstance(context).getWorkInfoByIdLiveData(upload_work_request.id)
+                    .observeForever { workInfo ->
+                        if (workInfo != null && workInfo.state == WorkInfo.State.ENQUEUED) {
+                            val notificationManager =
+                                NotificationManagerCompat.from(context)
+                            notificationManager.notify(
+                                notiProvider.UPLOAD_PENDING_NOTIFICATION_ID,
+                                notiProvider.UPLOAD_PENDING_NOTIFICATION
+                            )
+                        }
+                        if (workInfo != null && workInfo.state.isFinished) {
+                            if (workInfo.state == WorkInfo.State.SUCCEEDED) {
+                                Snackbar.make(
+                                    main_parent_view,
+                                    "Sucessfully uploaded your wallpaper",
+                                    Snackbar.LENGTH_LONG
+                                ).show()
+                                notificationManager.notify(1, notiProvider.UPLOAD_SUCCESS_NOTIFICATION)
+                                notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
+                            } else {
+                                Snackbar.make(
+                                    main_parent_view,
+                                    "There was a problem while uploading",
+                                    Snackbar.LENGTH_LONG
+                                ).show()
+                                notificationManager.notify(1, notiProvider.UPLOAD_FAILURE_NOTIFICATION)
+                                notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
+                            }
                         }
                     }
-                }
+            }
+
         }
     }
 
     override fun onStop() {
         super.onStop()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if(this::current_bitmap.isInitialized){
+            requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
+        }
     }
 }
