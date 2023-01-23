@@ -61,9 +61,6 @@ class HomeFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        requireActivity().getWindow().addFlags(
-            WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
-        );
     }
 
     override fun onCreateView(

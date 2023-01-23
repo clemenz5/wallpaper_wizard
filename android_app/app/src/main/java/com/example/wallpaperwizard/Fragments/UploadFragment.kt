@@ -1,17 +1,20 @@
 package com.example.wallpaperwizard.Fragments
 
 import RealPathUtil
+import android.animation.Animator
+import android.animation.Animator.AnimatorListener
 import android.app.Activity
 import android.app.NotificationManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.ImageDecoder
 import android.os.Bundle
 import android.util.Log
 import android.view.*
-import android.view.View.OnTouchListener
+import android.view.View.*
 import android.widget.RelativeLayout
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -47,6 +50,7 @@ class UploadFragment : Fragment() {
     lateinit var tagsResultCallback: Callback<TagsResult>
     val wallpaperApi = HomeFragment.RetrofitHelper.getInstance().create(WallpaperApi::class.java)
     lateinit var current_bitmap : Bitmap
+    lateinit var wallpaper_preview: TouchImageView
 
 
     override fun onCreateView(
@@ -116,7 +120,8 @@ class UploadFragment : Fragment() {
         }
 
 
-        val wallpaper_preview = parent.findViewById<TouchImageView>(R.id.wallpaper_preview)
+        wallpaper_preview = parent.findViewById<TouchImageView>(R.id.wallpaper_preview)
+        wallpaper_preview.visibility = GONE
         wallpaper_preview.setOnTouchImageViewListener(object : OnTouchImageViewListener {
             override fun onMove() {
                 requireActivity().findViewById<ViewPager2>(R.id.pager).isUserInputEnabled = false
@@ -149,11 +154,15 @@ class UploadFragment : Fragment() {
 
                 var filePath: String = RealPathUtil.getRealPath(context, result.data!!.data!!)!!
                 upload_file_url = filePath
+                wallpaper_preview.alpha = 0f
+                wallpaper_preview.translationY = 800f
+                wallpaper_preview.visibility = VISIBLE
+
                 wallpaper_preview.setImageBitmap(
                     current_bitmap
                 )
-                requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER
-                );
+                wallpaper_preview.animate().alpha(1f).translationY(0F).setDuration(500)
+
             }
         }
         button_select_wallpaper.setOnClickListener { view ->
@@ -196,6 +205,23 @@ class UploadFragment : Fragment() {
                     ).setConstraints(constraints).addTag("upload")
                         .build()
                 WorkManager.getInstance(context).enqueue(upload_work_request)
+                wallpaper_preview.animate().alpha(0f).translationY(-800F).setDuration(500).setListener(object: AnimatorListener{
+                    override fun onAnimationStart(p0: Animator?) {
+                    }
+
+                    override fun onAnimationEnd(p0: Animator?) {
+                        wallpaper_preview.visibility = GONE
+
+                    }
+
+                    override fun onAnimationCancel(p0: Animator?) {
+                    }
+
+                    override fun onAnimationRepeat(p0: Animator?) {
+                    }
+
+                })
+
 
                 Snackbar.make(
                     main_parent_view,
@@ -244,8 +270,5 @@ class UploadFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        if(this::current_bitmap.isInitialized){
-            requireActivity().getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WALLPAPER)
-        }
     }
 }
