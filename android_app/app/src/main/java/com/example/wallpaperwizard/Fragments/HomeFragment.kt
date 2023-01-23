@@ -14,6 +14,7 @@ import android.widget.EditText
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -158,14 +159,33 @@ class HomeFragment : Fragment() {
             Snackbar.make(view, "Set new Wallpaper", Snackbar.LENGTH_LONG).setAction("Action", null)
                 .show()
             val syncString = syncInput.text.toString()
+            val constraints: Constraints =
+                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
             val downloadWorkRequest: WorkRequest =
                 OneTimeWorkRequestBuilder<WallpaperChangerWorker>().setInputData(
                     Data.Builder().putStringArray("download_tags", tagGroup.getSelectedTags())
                         .putString("sync", syncString).build()
-                ).build()
+                ).setConstraints(constraints).build()
             WorkManager.getInstance(context).enqueue(downloadWorkRequest)
 
+            WorkManager.getInstance(context).getWorkInfoByIdLiveData(downloadWorkRequest.id)
+                .observeForever { workInfo ->
+                    if (workInfo != null && workInfo.state == WorkInfo.State.ENQUEUED) {
+                        val notificationManager =
+                            NotificationManagerCompat.from(context)
+                        notificationManager.notify(
+                            notiProvider.DOWNLOAD_PENDING_NOTIFICATION_ID,
+                            notiProvider.DOWNLOAD_PENDING_NOTIFICATION
+                        )
+                    }
+                    if (workInfo != null && workInfo.state.isFinished) {
+                        if (workInfo.state == WorkInfo.State.SUCCEEDED) {
 
+                        } else {
+
+                        }
+                    }
+                }
         }
     }
 

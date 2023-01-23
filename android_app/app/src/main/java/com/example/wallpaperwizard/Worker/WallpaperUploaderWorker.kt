@@ -18,7 +18,6 @@ import java.io.File
 class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParameters) :
     Worker(appContext, workerParams) {
     lateinit var notificationManager: NotificationManager
-    lateinit var notificationProvider: NotificationProvider
     val notiProvider = NotificationProvider(applicationContext)
     object RetrofitHelper {
         val baseUrl = "https://ww.keefer.de/"
