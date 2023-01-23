@@ -11,6 +11,6 @@ for i in $(seq 1 $retries); do
 		xwallpaper --zoom /tmp/wallpaper.jpg && echo "Set wallpaper :)"
 		exit 0
 	else
-		sleep 1
+		sleep $(( $i*$i ))
 	fi
 done
