@@ -11,15 +11,21 @@ import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.work.Worker
 import androidx.work.WorkerParameters
+import com.example.wallpaperwizard.NotificationProvider
 import com.example.wallpaperwizard.WallpaperApi
+import okhttp3.internal.notify
 import retrofit2.Retrofit
 
 
 class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters) :
     Worker(appContext, workerParams) {
+
+    lateinit var notificationManager: NotificationManager
+    val notiProvider = NotificationProvider(applicationContext)
     object RetrofitHelper {
         val baseUrl = "https://ww.keefer.de"
 
@@ -30,34 +36,13 @@ class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters
     }
 
     override fun doWork(): Result {
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is new and not in the support library
-        // Create the NotificationChannel, but only on API 26+ because
-        // the NotificationChannel class is new and not in the support library
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name: CharSequence = "Wallpaper Update"
-            val description: String = "Notifies that the wallpaper is currently being updated"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel("1", name, importance)
-            channel.description = description
-            val notificationManager: NotificationManager = getSystemService(
-                this.applicationContext, NotificationManager::class.java
-            )!!
-            notificationManager.createNotificationChannel(channel)
-        }
 
-        // Create the notification
-        val builder: NotificationCompat.Builder =
-            NotificationCompat.Builder(this.applicationContext, "1")
-                .setSmallIcon(R.drawable.sym_def_app_icon)
-                .setContentTitle("Wallpaper Wizard")
-                .setContentText("Loading new Wallpaper")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setProgress(100, 0, true)
-
-        // Show the notification
-        val notificationManager = NotificationManagerCompat.from(this.applicationContext)
-        notificationManager.notify(0, builder.build())
+        notificationManager = ContextCompat.getSystemService(
+            applicationContext, NotificationManager::class.java
+        )!!
+        notiProvider.createNotificationChannels(notificationManager)
+        notificationManager.cancel(notiProvider.DOWNLOAD_PENDING_NOTIFICATION_ID)
+        notificationManager.notify(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID, notiProvider.DOWNLOAD_RUNNING_NOTIFICATION)
 
         var tags_string = inputData.getStringArray("download_tags")!!.joinToString(prefix = "", separator = ";", postfix="")
 
@@ -70,28 +55,41 @@ class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters
         Log.d("request_url_tags", tags_string)
 
         Log.d("request_url", request.request().url.toString())
-        val result = request.execute()
 
-        val inputStream = result.body()!!.byteStream()
-        val bitmap = BitmapFactory.decodeStream(inputStream)
-        inputStream.close()
+        val response = request.execute()
 
-        val wallpaperManager = WallpaperManager.getInstance(this.applicationContext)
-        val crop = result.headers().get("crop")?.split(",")
 
-        if (crop != null) {
-            Log.d("crop_rect", crop.get(0).toFloat().toString())
-            val crop_rect = Rect(crop.get(0).toFloat().toInt(), crop.get(1).toFloat().toInt(), crop.get(2).toFloat().toInt(), crop.get(3).toFloat().toInt())
-            Log.d("crop_rect", crop_rect.toString())
-            wallpaperManager.setBitmap(bitmap, crop_rect, true)
+        if (response.isSuccessful) {
+            Log.d("tags_response", response.toString())
+            if (response.code() == 200 || response.code() == 304) {
+                val inputStream = response.body()!!.byteStream()
+                val bitmap = BitmapFactory.decodeStream(inputStream)
+                inputStream.close()
+
+                val wallpaperManager = WallpaperManager.getInstance(this.applicationContext)
+                val crop = response.headers().get("crop")?.split(",")
+
+                if (crop != null && crop.size == 4) {
+                    Log.d("crop_rect", crop.get(0).toFloat().toString())
+                    val crop_rect = Rect(crop.get(0).toFloat().toInt(), crop.get(1).toFloat().toInt(), crop.get(2).toFloat().toInt(), crop.get(3).toFloat().toInt())
+                    Log.d("crop_rect", crop_rect.toString())
+                    wallpaperManager.setBitmap(bitmap, crop_rect, true)
+                } else {
+                    wallpaperManager.setBitmap(bitmap, null, true)
+                }
+                notificationManager.notify(1, notiProvider.DOWNLOAD_SUCCESS_NOTIFICATION)
+                notificationManager.cancel(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID)
+                return Result.success()
+            }
+            notificationManager.notify(1, notiProvider.DOWNLOAD_FAILURE_NOTIFICATION)
+            notificationManager.cancel(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID)
+            return Result.failure()
+
         } else {
-            wallpaperManager.setBitmap(bitmap, null, true)
+            Log.d("download_response", response.toString())
+            notificationManager.notify(1, notiProvider.DOWNLOAD_FAILURE_NOTIFICATION)
+            notificationManager.cancel(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID)
+            return Result.failure()
         }
-
-        notificationManager.cancel(0)
-
-
-        // Indicate whether the work finished successfully with the Result
-        return Result.success()
     }
 }
