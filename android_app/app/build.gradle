@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.wallpaperwizard"
-        minSdk 24
+        minSdk 28
         targetSdk 32
         versionCode 1
         versionName "1.0"
@@ -36,7 +36,6 @@ android {
 }
 
 dependencies {
-
     implementation 'androidx.core:core-ktx:1.6.0'
     implementation 'androidx.appcompat:appcompat:1.2.0'
     implementation 'com.google.android.material:material:1.7.0'
