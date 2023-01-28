@@ -45,48 +45,55 @@ class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters
         notificationManager.notify(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID, notiProvider.DOWNLOAD_RUNNING_NOTIFICATION)
 
         var tags_string = inputData.getStringArray("download_tags")!!.joinToString(prefix = "", separator = ";", postfix="")
+        var sync_string = inputData.getString("sync")!!
+
+        Log.d("WallpaperChangerWorker:${this.id}", "doWork was called")
+        Log.d("WallpaperChangerWorker:${this.id}", "Tags: $tags_string")
+        Log.d("WallpaperChangerWorker:${this.id}", "Sync: $sync_string")
 
         val wallpaperApi =
             RetrofitHelper.getInstance().create(WallpaperApi::class.java)
+
         val request = wallpaperApi.getWallpaper(
-            sync = inputData.getString("sync")!!,
+            sync = sync_string,
             tags = tags_string
         )
-        Log.d("request_url_tags", tags_string)
-
-        Log.d("request_url", request.request().url.toString())
+        Log.d("WallpaperChangerWorker:${this.id}", "Calling API at ${request.request().url}")
 
         val response = request.execute()
+        Log.d("WallpaperChangerWorker:${this.id}", "Response: $response")
 
 
         if (response.isSuccessful) {
-            Log.d("tags_response", response.toString())
             if (response.code() == 200 || response.code() == 304) {
+                Log.d("WallpaperChangerWorker:${this.id}", "Response is successful and valid")
                 val inputStream = response.body()!!.byteStream()
                 val bitmap = BitmapFactory.decodeStream(inputStream)
                 inputStream.close()
 
                 val wallpaperManager = WallpaperManager.getInstance(this.applicationContext)
                 val crop = response.headers().get("crop")?.split(",")
-
                 if (crop != null && crop.size == 4) {
-                    Log.d("crop_rect", crop.get(0).toFloat().toString())
+                    Log.d("WallpaperChangerWorker:${this.id}", "Crop: $crop")
                     val crop_rect = Rect(crop.get(0).toFloat().toInt(), crop.get(1).toFloat().toInt(), crop.get(2).toFloat().toInt(), crop.get(3).toFloat().toInt())
-                    Log.d("crop_rect", crop_rect.toString())
                     wallpaperManager.setBitmap(bitmap, crop_rect, true)
                 } else {
+                    Log.d("WallpaperChangerWorker:${this.id}", "Crop: Not found")
                     wallpaperManager.setBitmap(bitmap, null, true)
                 }
                 notificationManager.notify(1, notiProvider.DOWNLOAD_SUCCESS_NOTIFICATION)
                 notificationManager.cancel(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID)
                 return Result.success()
+            } else {
+                Log.d("WallpaperChangerWorker:${this.id}", "Response is not valid")
+                notificationManager.notify(1, notiProvider.DOWNLOAD_FAILURE_NOTIFICATION)
+                notificationManager.cancel(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID)
+                return Result.failure()
             }
-            notificationManager.notify(1, notiProvider.DOWNLOAD_FAILURE_NOTIFICATION)
-            notificationManager.cancel(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID)
-            return Result.failure()
+
 
         } else {
-            Log.d("download_response", response.toString())
+            Log.d("WallpaperChangerWorker:${this.id}", "Response is not successful")
             notificationManager.notify(1, notiProvider.DOWNLOAD_FAILURE_NOTIFICATION)
             notificationManager.cancel(notiProvider.DOWNLOAD_RUNNING_NOTIFICATION_ID)
             return Result.failure()

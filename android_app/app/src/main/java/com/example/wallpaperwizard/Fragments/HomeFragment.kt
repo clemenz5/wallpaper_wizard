@@ -18,13 +18,12 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.preference.PreferenceManager
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.work.*
+import com.example.wallpaperwizard.*
 import com.example.wallpaperwizard.Components.TagGroup.TagGroup
-import com.example.wallpaperwizard.NotificationProvider
 import com.example.wallpaperwizard.R
-import com.example.wallpaperwizard.TagsResult
-import com.example.wallpaperwizard.WallpaperApi
 import com.example.wallpaperwizard.Worker.WallpaperChangerWorker
 import com.google.android.material.chip.Chip
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -97,11 +96,13 @@ class HomeFragment : Fragment() {
         val swipeRefreshView: SwipeRefreshLayout = parent.findViewById(R.id.swipe_refresh_view)
         val applyConfig: FloatingActionButton = parent.findViewById(R.id.applyConfig)
         val main_parent_view: ConstraintLayout = parent.findViewById(R.id.main_parent_view)
+        val settingsFab: FloatingActionButton= parent.findViewById(R.id.action_settings)
 
 
         val prefs = context.getSharedPreferences(
             "wallpaper_wizard.preferences", Context.MODE_PRIVATE
         )
+        val settings = PreferenceManager.getDefaultSharedPreferences(context)
         val tagsPrefsKey = "tags_preferences"
         val syncPrefsKey = "sync_preferences"
 
@@ -115,6 +116,10 @@ class HomeFragment : Fragment() {
         date_viewer = parent.findViewById(R.id.date_viewer)
         date_viewer.text = _sdfDateTime.format(Date())
         time_Viewer.text = _sdfWatchTime.format(Date())
+
+        settingsFab.setOnClickListener {
+            startActivity(Intent(activity, SettingsActivity::class.java))
+        }
 
         tagsResultCallback = object : Callback<TagsResult> {
             fun errorHandle(){
@@ -166,12 +171,18 @@ class HomeFragment : Fragment() {
             val syncString = syncInput.text.toString()
             val constraints: Constraints =
                 Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-            val downloadWorkRequest: WorkRequest =
+            val downloadWorkRequest: OneTimeWorkRequest =
                 OneTimeWorkRequestBuilder<WallpaperChangerWorker>().setInputData(
                     Data.Builder().putStringArray("download_tags", tagGroup.getSelectedTags())
                         .putString("sync", syncString).build()
                 ).setConstraints(constraints).build()
-            WorkManager.getInstance(context).enqueue(downloadWorkRequest)
+
+            // Stop periodic updating
+            WorkManager.getInstance(context).cancelUniqueWork("periodic_updater")
+            settings.edit().putBoolean("daily", false).apply()
+
+
+            WorkManager.getInstance(context).enqueueUniqueWork("one_time_updater", ExistingWorkPolicy.REPLACE, downloadWorkRequest)
 
             WorkManager.getInstance(context).getWorkInfoByIdLiveData(downloadWorkRequest.id)
                 .observeForever { workInfo ->
