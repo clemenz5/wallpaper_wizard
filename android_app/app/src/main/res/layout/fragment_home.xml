@@ -113,7 +113,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
-                        android:layout_marginLeft="10dp"
+                        android:layout_marginStart="10dp"
                         android:background="@drawable/input_background"
                         android:fontFamily="@font/arimo"
                         android:hint="@string/sync" />
@@ -134,8 +134,6 @@
                 style="@style/Theme.WallpaperWizard.FloatingActionButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_alignParentBottom="true"
                 android:layout_marginTop="600dp"
                 android:layout_marginEnd="40dp"
                 android:layout_marginBottom="48dp"
@@ -145,6 +143,23 @@
                 android:src="@drawable/baseline_save_24"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:rippleColor="#FFFFFF" />
+
+            <com.google.android.material.floatingactionbutton.FloatingActionButton
+                android:id="@+id/action_settings"
+                style="@style/Theme.WallpaperWizard.FloatingActionButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="600dp"
+                android:layout_marginStart="40dp"
+                android:layout_marginBottom="48dp"
+                android:backgroundTint="@color/white"
+                android:contentDescription="@string/applyConfig"
+                android:scaleType="center"
+                android:src="@drawable/settings_24px"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:rippleColor="#FFFFFF" />
 
