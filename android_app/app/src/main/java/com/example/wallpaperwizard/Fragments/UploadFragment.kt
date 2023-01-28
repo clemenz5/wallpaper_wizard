@@ -155,13 +155,17 @@ class UploadFragment : Fragment() {
                 var filePath: String = RealPathUtil.getRealPath(context, result.data!!.data!!)!!
                 upload_file_url = filePath
                 wallpaper_preview.alpha = 0f
+                wallpaper_preview.setVisibility(View.VISIBLE)
                 wallpaper_preview.translationY = 800f
-                wallpaper_preview.visibility = VISIBLE
 
-                wallpaper_preview.setImageBitmap(
-                    current_bitmap
-                )
-                wallpaper_preview.animate().alpha(1f).translationY(0F).setDuration(500)
+                wallpaper_preview.resetZoomAnimated()
+
+                wallpaper_preview.setImageBitmap(current_bitmap)
+                wallpaper_preview.animate().alpha(1f).translationY(0F).setDuration(500).withEndAction {
+                    wallpaper_preview.alpha = 1f
+                    wallpaper_preview.translationY = 0f
+                }
+
 
             }
         }
@@ -205,23 +209,10 @@ class UploadFragment : Fragment() {
                     ).setConstraints(constraints).addTag("upload")
                         .build()
                 WorkManager.getInstance(context).enqueue(upload_work_request)
-                wallpaper_preview.animate().alpha(0f).translationY(-800F).setDuration(500).setListener(object: AnimatorListener{
-                    override fun onAnimationStart(p0: Animator?) {
-                    }
-
-                    override fun onAnimationEnd(p0: Animator?) {
-                        wallpaper_preview.visibility = GONE
-
-                    }
-
-                    override fun onAnimationCancel(p0: Animator?) {
-                    }
-
-                    override fun onAnimationRepeat(p0: Animator?) {
-                    }
-
-                })
-
+                wallpaper_preview.animate().alpha(0f).translationY(-800F).setDuration(500).withEndAction {
+                    wallpaper_preview.visibility = GONE
+                    wallpaper_preview.translationY = 0f
+                }
 
                 Snackbar.make(
                     main_parent_view,
