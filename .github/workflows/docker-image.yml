@@ -10,4 +10,4 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build the Docker image
-      run: cd server; docker build . --tag "wallpaper_wizard:${{ github.GITHUB_SHA }}"
+      run: cd server; docker build . --tag "wallpaper_wizard:${{ github.sha }}"
