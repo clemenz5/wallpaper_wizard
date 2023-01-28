@@ -1,0 +1,13 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "clemenz5-github-actions" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: cd server; docker build . --tag "wallpaper_wizard:${{ github.sha }}"
