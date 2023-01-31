@@ -12,8 +12,10 @@ jobs:
     - name: Build the Docker image
     - run: cd server; docker build . --tag "wallpaper_wizard:${{ github.sha }}"
 
-  container_push:
+  push:
     needs: build
+    runs-on: ubuntu-latest
+    steps:
     - run: echo ${{ secrets.CR_PAT }} | docker login ghcr.io -u clemenz5 --password-stdin
     - run: docker tag "wallpaper_wizard:${{ GIT_COMMIT }}" ghcr.io/clemenz5/wallpaper_wizard:$(GIT_COMMIT)
     - run: docker push ghcr.io/clemenz5/wallpaper_wizard:${{ GIT_COMMIT }}
