@@ -14,7 +14,6 @@ jobs:
 
   push:
     runs-on: ubuntu-latest
-    name: Push to Github Registry
     needs: build
     steps:
     - uses: actions/checkout@v3
