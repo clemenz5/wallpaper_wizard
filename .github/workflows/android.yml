@@ -24,4 +24,4 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       working-directory: ./android_app
-      run: ./gradlew build
+      run: ./gradlew assembleRelease_unsigned
