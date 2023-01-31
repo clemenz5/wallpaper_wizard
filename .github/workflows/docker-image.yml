@@ -13,6 +13,7 @@ jobs:
     - run: cd server; docker build . --tag "wallpaper_wizard:${{ github.sha }}"
 
   push:
+    name: Push to Github Registry
     needs: build
     runs-on: ubuntu-latest
     steps:
