@@ -1,4 +1,4 @@
-[![Docker Image CI](https://github.com/clemenz5/wallpaper_wizard/actions/workflows/docker-image.yml/badge.svg)](https://github.com/clemenz5/wallpaper_wizard/actions/workflows/docker-image.yml)
+[![Server CI](https://github.com/clemenz5/wallpaper_wizard/actions/workflows/docker-image.yml/badge.svg)](https://github.com/clemenz5/wallpaper_wizard/actions/workflows/docker-image.yml)
 
 # wallpaper_wizard
 This tool can help you to synchronize wallpapers across all devices.\
