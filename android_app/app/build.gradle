@@ -26,10 +26,13 @@ android {
             keyPassword = "$System.env.STORE_PASSWORD"
         }
         buildTypes {
-
-            release {
+            release_signed {
                 signingConfig signingConfigs.release
-                minifyEnabled false
+                minifyEnabled true
+                proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            }
+            release_unsigned {
+                minifyEnabled true
                 proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             }
         }
