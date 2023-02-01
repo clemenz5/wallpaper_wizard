@@ -2,15 +2,13 @@ name: Android CI
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: [ "staging" ]
   pull_request:
     branches: [ "develop" ]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: set up JDK 11
@@ -25,3 +23,8 @@ jobs:
     - name: Build with Gradle
       working-directory: ./android_app
       run: ./gradlew assembleRelease_unsigned
+    - name: Upload APK
+      uses: actions/upload-artifact@v1
+      with:
+        name: ${{ github.GITHUB_REF_NAME }}-apk
+        path: app/build/outputs/apk/debug/app-debug.apk 
