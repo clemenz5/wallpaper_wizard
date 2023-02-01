@@ -36,8 +36,9 @@ jobs:
     steps:
     - name: Download apk from Artifacts
       uses: actions/download-artifact@v3
-      with:
-    - name: ${{ github.ref_name }}-ww.apk
+      with: 
+        name: ${{ github.ref_name }}-ww.apk
+    - name: Release APK
       uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.CR_PAT }}"
