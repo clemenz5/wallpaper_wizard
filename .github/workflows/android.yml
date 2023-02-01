@@ -40,7 +40,7 @@ jobs:
       uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.CR_PAT }}"
-        automatic_release_tag: "${{ github.ref_name }}:latest"
+        automatic_release_tag: "${{ github.ref_name }}-latest"
         prerelease: ${{ github.ref_name == 'develop' }}
         title: "Development Build"
         files: app-release_unsigned-unsigned.apk
