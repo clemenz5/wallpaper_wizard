@@ -28,3 +28,20 @@ jobs:
       with:
         name: ${{ github.ref_name }}-ww.apk
         path: android_app/app/build/outputs/apk/release_unsigned/app-release_unsigned-unsigned.apk
+
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'master' || github.ref_name == 'develop'
+    steps:
+    - name: Download apk from Artifacts
+      uses: actions/download-artifact@v3
+      with:
+    - name: ${{ github.ref_name }}-ww.apk
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.CR_PAT }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+        files: app-release_unsigned-unsigned.apk
+
