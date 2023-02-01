@@ -26,5 +26,5 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v1
       with:
-        name: ${{ github.GITHUB_REF_NAME }}-apk
+        name: ${{ github.ref_name }}-apk
         path: android_app/app/build/outputs/apk/release_unsigned/app-release_unsigned-unsigned.apk
