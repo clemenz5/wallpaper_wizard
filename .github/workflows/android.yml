@@ -2,7 +2,7 @@ name: Android CI
 
 on:
   push:
-    branches: [ "staging", "develop" ]
+    branches: [ "staging", "develop", "main" ]
 
 jobs:
   build:
@@ -30,7 +30,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref_name == 'master' || github.ref_name == 'develop'
+    if: github.ref_name == 'main' || github.ref_name == 'develop'
     steps:
     - name: Download apk from Artifacts
       uses: actions/download-artifact@v3
@@ -40,8 +40,8 @@ jobs:
       uses: "marvinpinto/action-automatic-releases@latest"
       with:
         repo_token: "${{ secrets.CR_PAT }}"
-        automatic_release_tag: "latest"
-        prerelease: true
+        automatic_release_tag: "${{ github.ref_name }}:latest"
+        prerelease: ${{ github.ref_name == 'develop' }}
         title: "Development Build"
         files: app-release_unsigned-unsigned.apk
 
