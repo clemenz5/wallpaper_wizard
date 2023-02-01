@@ -2,15 +2,11 @@ name: Android CI
 
 on:
   push:
-    branches: [ "develop" ]
-  pull_request:
-    branches: [ "develop" ]
+    branches: [ "staging", "develop" ]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: set up JDK 11
@@ -25,3 +21,27 @@ jobs:
     - name: Build with Gradle
       working-directory: ./android_app
       run: ./gradlew assembleRelease_unsigned
+    - name: Upload APK
+      uses: actions/upload-artifact@v1
+      with:
+        name: ${{ github.ref_name }}-ww.apk
+        path: android_app/app/build/outputs/apk/release_unsigned/app-release_unsigned-unsigned.apk
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref_name == 'master' || github.ref_name == 'develop'
+    steps:
+    - name: Download apk from Artifacts
+      uses: actions/download-artifact@v3
+      with: 
+        name: ${{ github.ref_name }}-ww.apk
+    - name: Release APK
+      uses: "marvinpinto/action-automatic-releases@latest"
+      with:
+        repo_token: "${{ secrets.CR_PAT }}"
+        automatic_release_tag: "latest"
+        prerelease: true
+        title: "Development Build"
+        files: app-release_unsigned-unsigned.apk
+
