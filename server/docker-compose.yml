@@ -1,0 +1,24 @@
+version: "3.9"
+services:
+  wallpaper_wizard:
+    build:
+      context: .
+    hostname: wallpaper_wizard
+    container_name: wallpaper_wizard
+    networks:
+      - f-net
+    volumes:
+      - type: volume
+        source: wallpaper_wizard
+        target: /wallpaper_wizard/data
+    restart: unless-stopped
+
+
+
+volumes:
+  wallpaper_wizard:
+
+networks:
+  f-net:
+    name: f-net
+    driver: bridge                
