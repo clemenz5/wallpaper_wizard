@@ -120,7 +120,7 @@ app.get("/wallpaper/:wallpaperName", (req, res) => {
         );
       }
       res.statusCode = 200;
-      res.header("crop", chosen_wallpaper.crop)
+      res.header("crop", results[0].crop)
       res.sendFile(`${pwd}/data/uploads/${results[0].name}`);
     }
   );
