@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.ImageDecoder
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.*
@@ -49,8 +50,9 @@ class UploadFragment : Fragment() {
     lateinit var notiProvider: NotificationProvider
     lateinit var tagsResultCallback: Callback<TagsResult>
     val wallpaperApi = HomeFragment.RetrofitHelper.getInstance().create(WallpaperApi::class.java)
-    lateinit var current_bitmap : Bitmap
+    lateinit var current_bitmap: Bitmap
     lateinit var wallpaper_preview: TouchImageView
+    val image_stack = mutableListOf<Uri>()
 
 
     override fun onCreateView(
@@ -76,15 +78,16 @@ class UploadFragment : Fragment() {
 
         val main_parent_view: ConstraintLayout = parent.findViewById(R.id.upload_parent_view)
         val tagGroup: TagGroup = parent.findViewById(R.id.upload_tag_group)
-        val swipeRefreshLayout = parent.findViewById<SwipeRefreshLayout>(R.id.upload_swipe_refresh_layout)
+        val swipeRefreshLayout =
+            parent.findViewById<SwipeRefreshLayout>(R.id.upload_swipe_refresh_layout)
 
         val prefs = context.getSharedPreferences(
             "wallpaper_wizard.preferences", Context.MODE_PRIVATE
         )
         val preferred_tags = prefs.getString("tags_preferences", "")!!.split(";").stream()
             .filter { str -> str != "" }.collect(
-            Collectors.toList()
-        )
+                Collectors.toList()
+            )
 
 
         tagsResultCallback = object : Callback<TagsResult> {
@@ -147,33 +150,23 @@ class UploadFragment : Fragment() {
             ActivityResultContracts.StartActivityForResult()
         ) { result: ActivityResult ->
             if (result.resultCode == Activity.RESULT_OK) {
-                Log.d("selection", result.data!!.data.toString())
-                val source =
-                    ImageDecoder.createSource(context.contentResolver, result.data!!.data!!)
-                current_bitmap = ImageDecoder.decodeBitmap(source)
-
-                var filePath: String = RealPathUtil.getRealPath(context, result.data!!.data!!)!!
-                upload_file_url = filePath
-                wallpaper_preview.alpha = 0f
-                wallpaper_preview.setVisibility(View.VISIBLE)
-                wallpaper_preview.translationY = 800f
-
-                wallpaper_preview.resetZoomAnimated()
-
-                wallpaper_preview.setImageBitmap(current_bitmap)
-                wallpaper_preview.animate().alpha(1f).translationY(0F).setDuration(500).withEndAction {
-                    wallpaper_preview.alpha = 1f
-                    wallpaper_preview.translationY = 0f
+                for (i in 0 until result.data!!.clipData!!.itemCount) {
+                    Log.d("selection", result.data!!.clipData!!.getItemAt(i).uri.toString())
+                    image_stack.add(result.data!!.clipData!!.getItemAt(i).uri)
                 }
-
-
+                load_from_stack()
             }
         }
         button_select_wallpaper.setOnClickListener { view ->
-            if (checkSelfPermission(context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            if (checkSelfPermission(
+                    context,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+            ) {
                 val intent = Intent()
                 intent.type = "image/*"
                 intent.action = Intent.ACTION_GET_CONTENT
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
                 startForResult.launch(intent)
             } else {
                 Snackbar.make(
@@ -191,7 +184,7 @@ class UploadFragment : Fragment() {
                 "selected_tags",
                 tagGroup.getSelectedTags().toList().toString()
             )
-            if (!this::current_bitmap.isInitialized){
+            if (!this::current_bitmap.isInitialized) {
                 Snackbar.make(
                     main_parent_view,
                     "Please select a wallpaper",
@@ -201,24 +194,29 @@ class UploadFragment : Fragment() {
                 val constraints: Constraints =
                     Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
-                val crop = "${wallpaper_preview.zoomedRect.left * current_bitmap.width},${wallpaper_preview.zoomedRect.top* current_bitmap.height},${wallpaper_preview.zoomedRect.right * current_bitmap.width},${wallpaper_preview.zoomedRect.bottom * current_bitmap.height}"
+                val crop =
+                    "${wallpaper_preview.zoomedRect.left * current_bitmap.width},${wallpaper_preview.zoomedRect.top * current_bitmap.height},${wallpaper_preview.zoomedRect.right * current_bitmap.width},${wallpaper_preview.zoomedRect.bottom * current_bitmap.height}"
                 val upload_work_request: WorkRequest =
                     OneTimeWorkRequestBuilder<WallpaperUploaderWorker>().setInputData(
                         Data.Builder().putString("upload_file_url", upload_file_url)
-                            .putString("rect", wallpaper_preview.zoomedRect.toString()).putStringArray("upload_tags", tagGroup.getSelectedTags()).putString("crop_preference", crop).build()
+                            .putString("rect", wallpaper_preview.zoomedRect.toString())
+                            .putStringArray("upload_tags", tagGroup.getSelectedTags())
+                            .putString("crop_preference", crop).build()
                     ).setConstraints(constraints).addTag("upload")
                         .build()
                 WorkManager.getInstance(context).enqueue(upload_work_request)
-                wallpaper_preview.animate().alpha(0f).translationY(-800F).setDuration(500).withEndAction {
-                    wallpaper_preview.visibility = GONE
-                    wallpaper_preview.translationY = 0f
-                }
+                wallpaper_preview.animate().alpha(0f).translationY(-800F).setDuration(500)
+                    .withEndAction {
+                        wallpaper_preview.visibility = GONE
+                        wallpaper_preview.translationY = 0f
+                    }
 
                 Snackbar.make(
                     main_parent_view,
                     "Uploading your wallpaper",
                     Snackbar.LENGTH_LONG
                 ).show()
+
 
                 WorkManager.getInstance(context).getWorkInfoByIdLiveData(upload_work_request.id)
                     .observeForever { workInfo ->
@@ -237,7 +235,10 @@ class UploadFragment : Fragment() {
                                     "Sucessfully uploaded your wallpaper",
                                     Snackbar.LENGTH_LONG
                                 ).show()
-                                notificationManager.notify(1, notiProvider.UPLOAD_SUCCESS_NOTIFICATION)
+                                notificationManager.notify(
+                                    1,
+                                    notiProvider.UPLOAD_SUCCESS_NOTIFICATION
+                                )
                                 notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
                             } else {
                                 Snackbar.make(
@@ -245,13 +246,45 @@ class UploadFragment : Fragment() {
                                     "There was a problem while uploading",
                                     Snackbar.LENGTH_LONG
                                 ).show()
-                                notificationManager.notify(1, notiProvider.UPLOAD_FAILURE_NOTIFICATION)
+                                notificationManager.notify(
+                                    1,
+                                    notiProvider.UPLOAD_FAILURE_NOTIFICATION
+                                )
                                 notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
                             }
                         }
                     }
+                load_from_stack()
             }
 
+        }
+    }
+
+    private fun load_from_stack() {
+        if (image_stack.size == 0) return
+        val current_uri = image_stack.removeAt(image_stack.size - 1)
+        val source =
+            requireContext().let {
+                ImageDecoder.createSource(
+                    it.contentResolver,
+                    current_uri
+                )
+            }
+        current_bitmap = ImageDecoder.decodeBitmap(source)
+
+        var filePath: String =
+            RealPathUtil.getRealPath(requireContext(), current_uri)!!
+        upload_file_url = filePath
+        wallpaper_preview.alpha = 0f
+        wallpaper_preview.visibility = View.VISIBLE
+        wallpaper_preview.translationY = 800f
+
+        wallpaper_preview.resetZoomAnimated()
+
+        wallpaper_preview.setImageBitmap(current_bitmap)
+        wallpaper_preview.animate().alpha(1f).translationY(0F).setDuration(500).withEndAction {
+            wallpaper_preview.alpha = 1f
+            wallpaper_preview.translationY = 0f
         }
     }
 
