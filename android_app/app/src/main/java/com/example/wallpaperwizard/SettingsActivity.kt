@@ -32,7 +32,7 @@ class SettingsActivity : AppCompatActivity() {
                     Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
                 val downloadWorkRequest: PeriodicWorkRequest =
                     PeriodicWorkRequestBuilder<WallpaperChangerWorker>(24, TimeUnit.HOURS)
-                        .addTag("periodic_updater").setInitialDelay(24, TimeUnit.HOURS)
+                        .addTag("periodic_updater").setInitialDelay(0, TimeUnit.MINUTES)
                         .setInputData(Data.Builder().putStringArray("download_tags", prefs.getString("tags_preferences", "")!!.split(";").stream().filter { str -> str != "" }.toArray { size -> arrayOfNulls<String>(size) }).putString("sync", prefs.getString("sync_preferences", "")).build())
                         .setConstraints(constraints)
                         .setBackoffCriteria(BackoffPolicy.LINEAR, 10, TimeUnit.SECONDS)

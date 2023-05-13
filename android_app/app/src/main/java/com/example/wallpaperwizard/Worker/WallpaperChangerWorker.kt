@@ -1,23 +1,16 @@
 package com.example.wallpaperwizard.Worker
 
-import android.R
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.WallpaperManager
 import android.content.Context
 import android.graphics.BitmapFactory
 import android.graphics.Rect
-import android.os.Build
 import android.util.Log
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getSystemService
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.example.wallpaperwizard.NotificationProvider
 import com.example.wallpaperwizard.WallpaperApi
-import okhttp3.internal.notify
 import retrofit2.Retrofit
 
 
