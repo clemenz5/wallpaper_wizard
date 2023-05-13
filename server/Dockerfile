@@ -5,6 +5,7 @@ RUN mkdir /wallpaper_wizard
 WORKDIR /wallpaper_wizard
 COPY package.json /wallpaper_wizard/
 RUN npm install
-COPY * /wallpaper_wizard/
+COPY ./ /wallpaper_wizard/
+Run ls
 RUN npx tsc
 CMD sqlite3 data/wallpaper_wizard.db; node wallpaper_wizard.js
