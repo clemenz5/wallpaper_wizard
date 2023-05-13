@@ -23,7 +23,7 @@ interface SyncRowScheme {
 function generateRandomFilename(filename: string) {
   const randomString = crypto_lib.randomBytes(8).toString("hex");
   const parts = filename.split(".");
-  return `${randomString}.${parts[1]}`;
+  return `${randomString}.${parts[parts.length-1]}`;
 }
 
 function getRandomInt(max: number) {
@@ -48,12 +48,6 @@ function getWallpaperByTags(tags: Array<string>, callback: Function) {
     }
   );
 }
-
-function setWallpaperOnSync(
-  sync: string,
-  wallpaper: string,
-  callback: Function
-) {}
 
 const storage = multer.diskStorage({
   destination: (req: Request, file: File, cb: Function) => {
