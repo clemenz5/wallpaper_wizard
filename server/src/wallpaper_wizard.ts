@@ -57,7 +57,6 @@ const storage = multer.diskStorage({
     cb(null, directory);
   },
   filename: (req: Express.Request, file: Express.Multer.File, cb: Function) => {
-    console.log(file);
     file.filename = generateRandomFilename(file.originalname);
     cb(null, file.filename);
   },
@@ -281,7 +280,6 @@ app.post(
     });
   },
   (req: Request, res: Response) => {
-    //console.log(req);
     console.log(req.query);
     if (typeof req.query.tags != "string") return;
     let tags: string = req.query.tags.endsWith(";")
