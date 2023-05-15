@@ -2,11 +2,13 @@ import { Request, Response } from "express";
 
 import express = require("express");
 import multer = require("multer");
+import { nextTick } from "process";
 const fs = require("fs");
 const crypto_lib = require("crypto");
 const sqlite3 = require("sqlite3");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./openapi.json");
+const imageThumbnail = require("image-thumbnail");
 
 const connection = new sqlite3.Database("./data/wallpaper_wizard.db");
 
@@ -52,19 +54,16 @@ function getWallpaperByTags(tags: Array<string>, callback: Function) {
 const storage = multer.diskStorage({
   destination: (req: Request, file: Express.Multer.File, cb: Function) => {
     const directory = `data/uploads/`;
-    if (!fs.existsSync(directory)) {
-      fs.mkdirSync(directory);
-    }
     cb(null, directory);
   },
   filename: (req: Express.Request, file: Express.Multer.File, cb: Function) => {
-    console.log(file)
+    console.log(file);
     file.filename = generateRandomFilename(file.originalname);
     cb(null, file.filename);
   },
 });
 
-const upload = multer({ storage: storage});
+const upload = multer({ storage: storage });
 
 const app = express();
 let pwd = process.cwd();
@@ -265,6 +264,22 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.post(
   "/wallpaper",
   upload.single("image"),
+  (req: Request, res: Response, next: Function) => {
+    imageThumbnail(req.file?.path).then((thumbnail: Buffer) => {
+      fs.open(
+        `data/uploads/thumbnails/thumb_${req.file?.filename}`,
+        "w",
+        function (err: Error, fd: number) {
+          if (err) {
+            res.status(500).send("Problem generating a thumbnail");
+          }
+          fs.write(fd, thumbnail, () => {
+            next();
+          });
+        }
+      );
+    });
+  },
   (req: Request, res: Response) => {
     //console.log(req);
     console.log(req.query);
@@ -307,6 +322,15 @@ app.put("/wallpaper/:wallpaper_name", (req, res) => {
 
 app.listen(3000, () => {
   console.log("Server listening on port 3000");
+  if (!fs.existsSync("data")) {
+    fs.mkdirSync("data");
+  }
+  if (!fs.existsSync("data/uploads")) {
+    fs.mkdirSync("data/uploads");
+  }
+  if (!fs.existsSync("data/uploads/thumbnails")) {
+    fs.mkdirSync("data/uploads/thumbnails");
+  }
 
   connection.all(
     `SELECT name FROM sqlite_master WHERE type='table' and name like 'wallpaper';`,

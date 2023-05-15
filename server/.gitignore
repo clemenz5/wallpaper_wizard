@@ -1,4 +1,7 @@
 data
 log
 node_modules
-dist
+distgit fetch origin
+git checkout 9-thumbnail-generationgit fetch origin
+git checkout 9-thumbnail-generationgit fetch origin
+git checkout 9-thumbnail-generation
