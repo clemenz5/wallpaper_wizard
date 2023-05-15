@@ -11,7 +11,7 @@ const connection = new sqlite3.Database("./data/wallpaper_wizard.db");
 function generateRandomFilename(filename) {
     const randomString = crypto_lib.randomBytes(8).toString("hex");
     const parts = filename.split(".");
-    return `${randomString}.${parts[1]}`;
+    return `${randomString}.${parts[parts.length - 1]}`;
 }
 function getRandomInt(max) {
     let min = 0;
@@ -31,7 +31,6 @@ function getWallpaperByTags(tags, callback) {
         callback(errors, results);
     });
 }
-function setWallpaperOnSync(sync, wallpaper, callback) { }
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const directory = `data/uploads/`;
@@ -41,8 +40,9 @@ const storage = multer.diskStorage({
         cb(null, directory);
     },
     filename: (req, file, cb) => {
-        req.file.filename = generateRandomFilename(file.name);
-        cb(null, req.file.filename);
+        console.log(file);
+        file.filename = generateRandomFilename(file.originalname);
+        cb(null, file.filename);
     },
 });
 const upload = multer({ storage: storage });
@@ -201,7 +201,7 @@ app.get("/crop/:wallpaper_name", (req, res) => {
 });
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.post("/wallpaper", upload.single("image"), (req, res) => {
-    console.log(req.file);
+    //console.log(req);
     console.log(req.query);
     if (typeof req.query.tags != "string")
         return;
@@ -218,6 +218,9 @@ app.post("/wallpaper", upload.single("image"), (req, res) => {
         console.log("Data inserted");
     });
     res.send("Image received");
+}, function (err, req, res) {
+    console.error(err);
+    res.status(500).send("An error occurred");
 });
 app.put("/wallpaper/:wallpaper_name", (req, res) => {
     connection.run(`

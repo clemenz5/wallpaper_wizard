@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 
 import express = require("express");
-const multer = require("multer");
+import multer = require("multer");
 const fs = require("fs");
 const crypto_lib = require("crypto");
 const sqlite3 = require("sqlite3");
@@ -23,7 +23,7 @@ interface SyncRowScheme {
 function generateRandomFilename(filename: string) {
   const randomString = crypto_lib.randomBytes(8).toString("hex");
   const parts = filename.split(".");
-  return `${randomString}.${parts[1]}`;
+  return `${randomString}.${parts[parts.length - 1]}`;
 }
 
 function getRandomInt(max: number) {
@@ -49,27 +49,22 @@ function getWallpaperByTags(tags: Array<string>, callback: Function) {
   );
 }
 
-function setWallpaperOnSync(
-  sync: string,
-  wallpaper: string,
-  callback: Function
-) {}
-
 const storage = multer.diskStorage({
-  destination: (req: Request, file: File, cb: Function) => {
+  destination: (req: Request, file: Express.Multer.File, cb: Function) => {
     const directory = `data/uploads/`;
     if (!fs.existsSync(directory)) {
       fs.mkdirSync(directory);
     }
     cb(null, directory);
   },
-  filename: (req: Express.Request, file: File, cb: Function) => {
-    req.file!!.filename = generateRandomFilename(file.name);
-    cb(null, req.file!!.filename);
+  filename: (req: Express.Request, file: Express.Multer.File, cb: Function) => {
+    console.log(file)
+    file.filename = generateRandomFilename(file.originalname);
+    cb(null, file.filename);
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage: storage});
 
 const app = express();
 let pwd = process.cwd();
@@ -221,8 +216,8 @@ app.get("/wallpaper", (req: express.Request, res: Response) => {
           db_query,
           (errors: Error, results: Array<WallpaperRowScheme>) => {
             if (errors) {
-              res.statusCode = 500
-              res.send("Error while getting info on the wallpaper")
+              res.statusCode = 500;
+              res.send("Error while getting info on the wallpaper");
             }
             console.log(results);
             res.header("crop", results[0].crop);
@@ -271,7 +266,7 @@ app.post(
   "/wallpaper",
   upload.single("image"),
   (req: Request, res: Response) => {
-    console.log(req.file);
+    //console.log(req);
     console.log(req.query);
     if (typeof req.query.tags != "string") return;
     let tags: string = req.query.tags.endsWith(";")
@@ -289,6 +284,10 @@ app.post(
       }
     );
     res.send("Image received");
+  },
+  function (err: Error, req: Request, res: Response) {
+    console.error(err);
+    res.status(500).send("An error occurred");
   }
 );
 
