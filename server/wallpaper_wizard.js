@@ -7,6 +7,7 @@ const crypto_lib = require("crypto");
 const sqlite3 = require("sqlite3");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./openapi.json");
+const imageThumbnail = require("image-thumbnail");
 const connection = new sqlite3.Database("./data/wallpaper_wizard.db");
 function generateRandomFilename(filename) {
     const randomString = crypto_lib.randomBytes(8).toString("hex");
@@ -200,7 +201,17 @@ app.get("/crop/:wallpaper_name", (req, res) => {
     connection.all(`SELECT crop FROM wallpaper WHERE name='${req.params.wallpaper_name}'`);
 });
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-app.post("/wallpaper", upload.single("image"), (req, res) => {
+app.post("/wallpaper", upload.single("image"), (req, res, next) => {
+    var _a;
+    imageThumbnail((_a = req.file) === null || _a === void 0 ? void 0 : _a.path).then((thumbnail) => {
+        var _a;
+        fs.open(`data/uploads/thumbnails/thumb_${(_a = req.file) === null || _a === void 0 ? void 0 : _a.filename}`, "w", function (err, fd) {
+            fs.write(fd, thumbnail, () => {
+                next();
+            });
+        });
+    });
+}, (req, res) => {
     //console.log(req);
     console.log(req.query);
     if (typeof req.query.tags != "string")
