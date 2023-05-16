@@ -152,6 +152,29 @@ app.get("/wallpaper/:wallpaperName", (req: Request, res: Response) => {
   );
 });
 
+app.get("/thumbnail/:wallpaperName", (req: Request, res: Response) => {
+  console.log(`Request: /thumbnail/${req.params.wallpaperName}`);
+  let db_query: string = `SELECT * FROM wallpaper WHERE name='${req.params.wallpaperName}';`;
+  console.log(db_query);
+  connection.all(
+    db_query,
+    (error: Error, results: Array<{ name: string; crop: string }>) => {
+      if (error || results.length == 0) {
+        res.statusCode = 404;
+        res.send(
+          JSON.stringify({
+            message: "An Error occured while querying for the wallpaper",
+            error: error,
+          })
+        );
+      }
+      res.statusCode = 200;
+      res.header("crop", results[0].crop);
+      res.sendFile(`${pwd}/data/uploads/thumbnails/thumb_${results[0].name}`);
+    }
+  );
+});
+
 app.get("/wallpaper", (req: express.Request, res: Response) => {
   console.log(
     "Request: /wallpaper, sync=" +

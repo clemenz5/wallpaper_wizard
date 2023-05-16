@@ -35,13 +35,9 @@ function getWallpaperByTags(tags, callback) {
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         const directory = `data/uploads/`;
-        if (!fs.existsSync(directory)) {
-            fs.mkdirSync(directory);
-        }
         cb(null, directory);
     },
     filename: (req, file, cb) => {
-        console.log(file);
         file.filename = generateRandomFilename(file.originalname);
         cb(null, file.filename);
     },
@@ -114,6 +110,23 @@ app.get("/wallpaper/:wallpaperName", (req, res) => {
         res.statusCode = 200;
         res.header("crop", results[0].crop);
         res.sendFile(`${pwd}/data/uploads/${results[0].name}`);
+    });
+});
+app.get("/thumbnail/:wallpaperName", (req, res) => {
+    console.log(`Request: /thumbnail/${req.params.wallpaperName}`);
+    let db_query = `SELECT * FROM wallpaper WHERE name='${req.params.wallpaperName}';`;
+    console.log(db_query);
+    connection.all(db_query, (error, results) => {
+        if (error || results.length == 0) {
+            res.statusCode = 404;
+            res.send(JSON.stringify({
+                message: "An Error occured while querying for the wallpaper",
+                error: error,
+            }));
+        }
+        res.statusCode = 200;
+        res.header("crop", results[0].crop);
+        res.sendFile(`${pwd}/data/uploads/thumbnails/thumb_${results[0].name}`);
     });
 });
 app.get("/wallpaper", (req, res) => {
@@ -206,13 +219,15 @@ app.post("/wallpaper", upload.single("image"), (req, res, next) => {
     imageThumbnail((_a = req.file) === null || _a === void 0 ? void 0 : _a.path).then((thumbnail) => {
         var _a;
         fs.open(`data/uploads/thumbnails/thumb_${(_a = req.file) === null || _a === void 0 ? void 0 : _a.filename}`, "w", function (err, fd) {
+            if (err) {
+                res.status(500).send("Problem generating a thumbnail");
+            }
             fs.write(fd, thumbnail, () => {
                 next();
             });
         });
     });
 }, (req, res) => {
-    //console.log(req);
     console.log(req.query);
     if (typeof req.query.tags != "string")
         return;
@@ -246,6 +261,15 @@ app.put("/wallpaper/:wallpaper_name", (req, res) => {
 });
 app.listen(3000, () => {
     console.log("Server listening on port 3000");
+    if (!fs.existsSync("data")) {
+        fs.mkdirSync("data");
+    }
+    if (!fs.existsSync("data/uploads")) {
+        fs.mkdirSync("data/uploads");
+    }
+    if (!fs.existsSync("data/uploads/thumbnails")) {
+        fs.mkdirSync("data/uploads/thumbnails");
+    }
     connection.all(`SELECT name FROM sqlite_master WHERE type='table' and name like 'wallpaper';`, (error, results) => {
         if (error)
             throw error;
