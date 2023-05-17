@@ -19,6 +19,12 @@ interface WallpaperApi {
     @GET("/wallpaper")
     fun getWallpaper(@Query("tags") tags: String, @Query("sync") sync: String): Call<ResponseBody>
 
+    @GET("/thumbnail/{wallpaper_name}")
+    fun getThumbnail(@Path("wallpaper_name") wallpaper_name: String): Call<ResponseBody>
+
+    @GET("/wallpaper/list")
+    fun getWallpaperList(): Call<WallpaperListResponse>
+
     @GET("/tags")
     fun getTags(): Call<TagsResult>
 
@@ -38,5 +44,14 @@ class API() {
 
 data class TagsResult(
     val tags: Array<String>
+)
+
+data class WallpaperInfoObject(
+    val name: String,
+    val tags: Array<String>
+)
+
+data class WallpaperListResponse(
+    val wallpapers: Array<WallpaperInfoObject>
 )
 
