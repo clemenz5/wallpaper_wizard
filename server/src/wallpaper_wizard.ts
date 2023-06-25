@@ -330,7 +330,7 @@ app.post(
 app.put("/wallpaper/:wallpaper_name", (req, res) => {
   connection.run(
     `
-    UPDATE wallpaper SET tags='${req.query.tags}'
+    UPDATE wallpaper SET tags='${req.query.tags}', crop='${req.query.crop}'
     WHERE name='${req.params.wallpaper_name}';
   `,
     (error: Error, results: Array<string>) => {
@@ -338,7 +338,7 @@ app.put("/wallpaper/:wallpaper_name", (req, res) => {
       console.log(results);
     }
   );
-  res.send("Updated image");
+  res.send("Updated wallpaper");
 });
 
 app.listen(3000, () => {

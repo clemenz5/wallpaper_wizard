@@ -250,14 +250,14 @@ app.post("/wallpaper", upload.single("image"), (req, res, next) => {
 });
 app.put("/wallpaper/:wallpaper_name", (req, res) => {
     connection.run(`
-    UPDATE wallpaper SET tags='${req.query.tags}'
+    UPDATE wallpaper SET tags='${req.query.tags}', crop='${req.query.crop}'
     WHERE name='${req.params.wallpaper_name}';
   `, (error, results) => {
         if (error)
             throw error;
         console.log(results);
     });
-    res.send("Updated image");
+    res.send("Updated wallpaper");
 });
 app.listen(3000, () => {
     console.log("Server listening on port 3000");
