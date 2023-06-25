@@ -272,6 +272,50 @@
           }
         }
       }
+    },
+    "/thumbnail/{wallpaper_name}": {
+      "get": {
+        "tags": [
+          "thumbnail"
+        ],
+        "summary": "Get a thumbnail for a specific wallpaper",
+        "description": "Get a thumbnail for a wallpaper by specifying its name",
+        "operationId": "getThumbnailforWallpaper",
+        "parameters": [
+          {
+            "name": "wallpaper_name",
+            "in": "path",
+            "description": "The exact name of the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagNotFound"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

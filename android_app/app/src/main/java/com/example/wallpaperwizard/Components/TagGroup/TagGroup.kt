@@ -15,6 +15,8 @@ import com.google.android.material.chip.ChipGroup
 import java.util.stream.Collectors
 
 class TagGroup(context: Context, attributeSet: AttributeSet?) :
+
+
     LinearLayout(context, attributeSet) {
     var tagGroup: ChipGroup
     lateinit var selectedChips: MutableList<Chip>
@@ -22,6 +24,7 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
     var tags = arrayOf<String>()
     var preferredTags = arrayOf<String>()
     var searchTag: String = ""
+    var selectedTagsChangeListenerList: MutableList<OnTagSelectionChangeListener> = mutableListOf()
 
     init {
         inflate(context, R.layout.tag_group_layout, this)
@@ -69,12 +72,15 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
                 selectedChips = newSelectedChips
                 unselectedChips = newUnselectedChips
                 populateChips()
+                for(listener in selectedTagsChangeListenerList){
+                    listener.selectionChanged(selectedChips, unselectedChips)
+                }
             }
 
         })
 
-        addButton.setOnClickListener{
-            if(searchInput.text.isNotEmpty()){
+        addButton.setOnClickListener {
+            if (searchInput.text.isNotEmpty()) {
                 val view = Chip(
                     context,
                     null,
@@ -93,7 +99,7 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
 
         }
 
-        searchInput.addTextChangedListener(object: TextWatcher {
+        searchInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
 
             }
@@ -110,6 +116,10 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
         })
     }
 
+    fun addOnSelectionChangeListener(listener: OnTagSelectionChangeListener){
+        selectedTagsChangeListenerList.add(listener)
+    }
+
     fun setTags(tags: Array<String>, preferredTags: Array<String>) {
         this.tags = tags
         this.preferredTags = preferredTags
@@ -118,7 +128,8 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
     }
 
     fun getSelectedTags(): Array<String> {
-        return selectedChips.stream().map { chip -> chip.text.toString() }.collect(Collectors.toList()).toTypedArray()
+        return selectedChips.stream().map { chip -> chip.text.toString() }
+            .collect(Collectors.toList()).toTypedArray()
     }
 
     private fun createChips() {
@@ -148,7 +159,13 @@ class TagGroup(context: Context, attributeSet: AttributeSet?) :
 
     private fun populateChips() {
         tagGroup.removeAllViews()
-        selectedChips.stream().filter{chip -> chip.text.contains(searchTag)}.forEach{chip -> tagGroup.addView(chip)}
-        unselectedChips.stream().filter{chip -> chip.text.contains(searchTag)}.forEach{chip -> tagGroup.addView(chip)}
+        selectedChips.stream().filter { chip -> chip.text.contains(searchTag) }
+            .forEach { chip -> tagGroup.addView(chip) }
+        unselectedChips.stream().filter { chip -> chip.text.contains(searchTag) }
+            .forEach { chip -> tagGroup.addView(chip) }
     }
+}
+
+interface OnTagSelectionChangeListener {
+    fun selectionChanged(selectedChips: MutableList<Chip>, unselectedChips: MutableList<Chip>)
 }

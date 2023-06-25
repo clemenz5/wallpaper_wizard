@@ -1,12 +1,14 @@
 import { Request, Response } from "express";
 
 import express = require("express");
-const multer = require("multer");
+import multer = require("multer");
+import { nextTick } from "process";
 const fs = require("fs");
 const crypto_lib = require("crypto");
 const sqlite3 = require("sqlite3");
 const swaggerUi = require("swagger-ui-express");
 const swaggerDocument = require("./openapi.json");
+const imageThumbnail = require("image-thumbnail");
 
 const connection = new sqlite3.Database("./data/wallpaper_wizard.db");
 
@@ -23,7 +25,7 @@ interface SyncRowScheme {
 function generateRandomFilename(filename: string) {
   const randomString = crypto_lib.randomBytes(8).toString("hex");
   const parts = filename.split(".");
-  return `${randomString}.${parts[1]}`;
+  return `${randomString}.${parts[parts.length - 1]}`;
 }
 
 function getRandomInt(max: number) {
@@ -49,23 +51,14 @@ function getWallpaperByTags(tags: Array<string>, callback: Function) {
   );
 }
 
-function setWallpaperOnSync(
-  sync: string,
-  wallpaper: string,
-  callback: Function
-) {}
-
 const storage = multer.diskStorage({
-  destination: (req: Request, file: File, cb: Function) => {
+  destination: (req: Request, file: Express.Multer.File, cb: Function) => {
     const directory = `data/uploads/`;
-    if (!fs.existsSync(directory)) {
-      fs.mkdirSync(directory);
-    }
     cb(null, directory);
   },
-  filename: (req: Express.Request, file: File, cb: Function) => {
-    req.file!!.filename = generateRandomFilename(file.name);
-    cb(null, req.file!!.filename);
+  filename: (req: Express.Request, file: Express.Multer.File, cb: Function) => {
+    file.filename = generateRandomFilename(file.originalname);
+    cb(null, file.filename);
   },
 });
 
@@ -159,6 +152,29 @@ app.get("/wallpaper/:wallpaperName", (req: Request, res: Response) => {
   );
 });
 
+app.get("/thumbnail/:wallpaperName", (req: Request, res: Response) => {
+  console.log(`Request: /thumbnail/${req.params.wallpaperName}`);
+  let db_query: string = `SELECT * FROM wallpaper WHERE name='${req.params.wallpaperName}';`;
+  console.log(db_query);
+  connection.all(
+    db_query,
+    (error: Error, results: Array<{ name: string; crop: string }>) => {
+      if (error || results.length == 0) {
+        res.statusCode = 404;
+        res.send(
+          JSON.stringify({
+            message: "An Error occured while querying for the wallpaper",
+            error: error,
+          })
+        );
+      }
+      res.statusCode = 200;
+      res.header("crop", results[0].crop);
+      res.sendFile(`${pwd}/data/uploads/thumbnails/thumb_${results[0].name}`);
+    }
+  );
+});
+
 app.get("/wallpaper", (req: express.Request, res: Response) => {
   console.log(
     "Request: /wallpaper, sync=" +
@@ -221,8 +237,8 @@ app.get("/wallpaper", (req: express.Request, res: Response) => {
           db_query,
           (errors: Error, results: Array<WallpaperRowScheme>) => {
             if (errors) {
-              res.statusCode = 500
-              res.send("Error while getting info on the wallpaper")
+              res.statusCode = 500;
+              res.send("Error while getting info on the wallpaper");
             }
             console.log(results);
             res.header("crop", results[0].crop);
@@ -270,8 +286,23 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.post(
   "/wallpaper",
   upload.single("image"),
+  (req: Request, res: Response, next: Function) => {
+    imageThumbnail(req.file?.path).then((thumbnail: Buffer) => {
+      fs.open(
+        `data/uploads/thumbnails/thumb_${req.file?.filename}`,
+        "w",
+        function (err: Error, fd: number) {
+          if (err) {
+            res.status(500).send("Problem generating a thumbnail");
+          }
+          fs.write(fd, thumbnail, () => {
+            next();
+          });
+        }
+      );
+    });
+  },
   (req: Request, res: Response) => {
-    console.log(req.file);
     console.log(req.query);
     if (typeof req.query.tags != "string") return;
     let tags: string = req.query.tags.endsWith(";")
@@ -289,6 +320,10 @@ app.post(
       }
     );
     res.send("Image received");
+  },
+  function (err: Error, req: Request, res: Response) {
+    console.error(err);
+    res.status(500).send("An error occurred");
   }
 );
 
@@ -308,6 +343,15 @@ app.put("/wallpaper/:wallpaper_name", (req, res) => {
 
 app.listen(3000, () => {
   console.log("Server listening on port 3000");
+  if (!fs.existsSync("data")) {
+    fs.mkdirSync("data");
+  }
+  if (!fs.existsSync("data/uploads")) {
+    fs.mkdirSync("data/uploads");
+  }
+  if (!fs.existsSync("data/uploads/thumbnails")) {
+    fs.mkdirSync("data/uploads/thumbnails");
+  }
 
   connection.all(
     `SELECT name FROM sqlite_master WHERE type='table' and name like 'wallpaper';`,

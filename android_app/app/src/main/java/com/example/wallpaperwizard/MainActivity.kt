@@ -6,6 +6,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
+import com.example.wallpaperwizard.Fragments.EditFragment
 import com.example.wallpaperwizard.Fragments.HomeFragment
 import com.example.wallpaperwizard.Fragments.UploadFragment
 
@@ -25,7 +26,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private inner class ScreenSlidePagerAdapter(fa: FragmentActivity) : FragmentStateAdapter(fa) {
-        val fragmentClassArray = arrayOf(UploadFragment(), HomeFragment())
+        val fragmentClassArray = arrayOf(UploadFragment(), HomeFragment(), EditFragment())
         override fun getItemCount(): Int = fragmentClassArray.size
 
         override fun createFragment(position: Int): Fragment {
