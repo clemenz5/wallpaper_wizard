@@ -188,6 +188,15 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "crop",
+            "in": "query",
+            "description": "The crop associated with the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
