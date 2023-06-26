@@ -214,6 +214,40 @@
             }
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "wallpaper"
+        ],
+        "summary": "Delete a apecific wallpaper",
+        "description": "Delete a specific wallpaper by its name",
+        "operationId": "deleteWallpaperByName",
+        "parameters": [
+          {
+            "name": "wallpaper_name",
+            "in": "path",
+            "description": "The exact name of the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "404": {
+            "description": "Specified wallpaper not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WallpaperNotFound"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/wallpaper/list": {
