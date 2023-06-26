@@ -129,6 +129,31 @@ app.get("/thumbnail/:wallpaperName", (req, res) => {
         res.sendFile(`${pwd}/data/uploads/thumbnails/thumb_${results[0].name}`);
     });
 });
+app.delete("/wallpaper/:wallpaperName", (req, res) => {
+    console.log(`Request: /wallpaper/${req.params.wallpaperName}`);
+    //delete thumbnail
+    fs.unlink(`${pwd}/data/uploads/thumbnails/thumb_${req.params.wallpaperName}`, (err) => {
+        console.log(err);
+    });
+    //delete wallpaper
+    fs.unlink(`${pwd}/data/uploads/${req.params.wallpaperName}`, (err) => {
+        console.log(err);
+    });
+    //delete entry from 
+    let db_query = `DELETE FROM wallpaper WHERE name='${req.params.wallpaperName}';`;
+    console.log(db_query);
+    connection.all(db_query, (error) => {
+        if (error) {
+            res.statusCode = 404;
+            res.send(JSON.stringify({
+                message: "An Error occured while querying for the wallpaper",
+                error: error,
+            }));
+        }
+        res.statusCode = 200;
+        res.send("Deleted wallpaper");
+    });
+});
 app.get("/wallpaper", (req, res) => {
     console.log("Request: /wallpaper, sync=" +
         req.query.sync +
