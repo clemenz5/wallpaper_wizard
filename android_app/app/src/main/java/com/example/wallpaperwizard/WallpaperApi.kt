@@ -11,7 +11,12 @@ interface WallpaperApi {
     @Multipart
     @POST("/wallpaper")
     fun uploadWallpaper(
-        @Part image: MultipartBody.Part,
+        @Part image: MultipartBody.Part, @Query("tags") tags: String, @Query("crop") crop: String
+    ): Call<ResponseBody>
+
+    @PUT("/wallpaper/{wallpaper_name}")
+    fun updateWallpaper(
+        @Path("wallpaper_name") wallpaper_name: String,
         @Query("tags") tags: String,
         @Query("crop") crop: String
     ): Call<ResponseBody>
@@ -21,6 +26,9 @@ interface WallpaperApi {
 
     @GET("/thumbnail/{wallpaper_name}")
     fun getThumbnail(@Path("wallpaper_name") wallpaper_name: String): Call<ResponseBody>
+
+    @GET("/wallpaper/{wallpaper_name}")
+    fun getWallpaperByName(@Path("wallpaper_name") wallpaper_name: String): Call<ResponseBody>
 
     @GET("/wallpaper/list")
     fun getWallpaperList(): Call<WallpaperListResponse>
@@ -36,8 +44,7 @@ class API() {
         val baseUrl = "http://192.168.122.45:3000"
 
         fun getInstance(): Retrofit {
-            return Retrofit.Builder().baseUrl(baseUrl)
-                .build()
+            return Retrofit.Builder().baseUrl(baseUrl).build()
         }
     }
 }
@@ -47,8 +54,7 @@ data class TagsResult(
 )
 
 data class WallpaperInfoObject(
-    val name: String,
-    val tags: Array<String>
+    val name: String, val tags: Array<String>
 )
 
 data class WallpaperListResponse(

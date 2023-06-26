@@ -15,12 +15,14 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.wallpaperwizard.Components.TagGroup.OnTagSelectionChangeListener
 import com.example.wallpaperwizard.Components.TagGroup.TagGroup
+import com.example.wallpaperwizard.DataPassInterface
 import com.example.wallpaperwizard.R
 import com.example.wallpaperwizard.TagsResult
 import com.example.wallpaperwizard.WallpaperApi
 import com.example.wallpaperwizard.WallpaperInfoObject
 import com.example.wallpaperwizard.WallpaperListResponse
 import com.google.android.material.chip.Chip
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import okhttp3.ResponseBody
 import retrofit2.Call
@@ -28,7 +30,6 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import java.security.AccessController.getContext
 import java.util.stream.Collectors
 
 
@@ -45,7 +46,7 @@ class EditFragment : Fragment() {
     var width: Int = 1080
 
     object RetrofitHelper {
-        val baseUrl = "https://ww.keefer.de"
+        const val baseUrl = "https://ww.keefer.de"
         fun getInstance(): Retrofit {
             return Retrofit.Builder().baseUrl(baseUrl)
                 .addConverterFactory(GsonConverterFactory.create()).build()
@@ -71,7 +72,8 @@ class EditFragment : Fragment() {
                 call: Call<WallpaperListResponse>, response: Response<WallpaperListResponse>
             ) {
                 wallpaperList = response.body()!!.wallpapers.toList()
-                recyclerAdapter.dataSet = wallpaperList
+                shownWallpaper = wallpaperList.toMutableList()
+                recyclerAdapter.dataSet = shownWallpaper
                 recyclerAdapter.notifyDataSetChanged()
                 Log.d("WallpaperListResponse", response.body()!!.toString())
 
@@ -93,9 +95,23 @@ class EditFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         recyclerView = view.findViewById<RecyclerView>(R.id.edit_fragment_recycler_view)
         recyclerAdapter = CustomAdapter(wallpaperList)
-
         recyclerView.adapter = recyclerAdapter
         recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
+
+        val editWallpaperFab =
+            view.findViewById<FloatingActionButton>(R.id.edit_fragment_edit_wallpaper_fab)
+
+        editWallpaperFab.setOnClickListener {
+            if (selectedWallpaper.isEmpty()) {
+                Snackbar.make(
+                    view,
+                    "Select a wallpaper to edit",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            } else {
+                (activity as DataPassInterface).passEditWallpaper(selectedWallpaper.stream().map { shownWallpaper[it] }.collect(Collectors.toList()))
+            }
+        }
 
         val tagGroup: TagGroup = view.findViewById(R.id.edit_fragment_tag_layout)
 
@@ -129,8 +145,7 @@ class EditFragment : Fragment() {
         wallpaperApi.getTags().enqueue(tagsResultCallback)
         tagGroup.addOnSelectionChangeListener(object : OnTagSelectionChangeListener {
             override fun selectionChanged(
-                selectedChips: MutableList<Chip>,
-                unselectedChips: MutableList<Chip>
+                selectedChips: MutableList<Chip>, unselectedChips: MutableList<Chip>
             ) {
                 val selectedTags =
                     selectedChips.stream().map { chip -> chip.text }.map { it.toString() }
