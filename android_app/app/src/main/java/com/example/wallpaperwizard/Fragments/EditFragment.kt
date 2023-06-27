@@ -13,6 +13,7 @@ import android.widget.ImageView
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.example.wallpaperwizard.Components.TagGroup.OnTagSelectionChangeListener
 import com.example.wallpaperwizard.Components.TagGroup.TagGroup
 import com.example.wallpaperwizard.DataPassInterface
@@ -38,7 +39,7 @@ val wallpaperApi = EditFragment.RetrofitHelper.getInstance().create(WallpaperApi
 class EditFragment : Fragment() {
     var wallpaperList: List<WallpaperInfoObject> = emptyList()
     var shownWallpaper: MutableList<WallpaperInfoObject> = mutableListOf()
-    var selectedWallpaper: MutableList<Int> = mutableListOf()
+    var selectedWallpaper: MutableList<WallpaperInfoObject> = mutableListOf()
     lateinit var recyclerView: RecyclerView
     lateinit var recyclerAdapter: CustomAdapter
     lateinit var tagsResultCallback: Callback<TagsResult>
@@ -60,9 +61,13 @@ class EditFragment : Fragment() {
         activity?.getWindowManager()?.getDefaultDisplay()?.getMetrics(displayMetrics)
         height = displayMetrics.heightPixels
         width = displayMetrics.widthPixels
+        queryWallpaperList()
 
+
+    }
+
+    private fun queryWallpaperList() {
         wallpaperApi.getWallpaperList().enqueue(object : Callback<WallpaperListResponse> {
-
             override fun onFailure(call: Call<WallpaperListResponse>, t: Throwable) {
                 Log.d("WallpaperListResponse", "failed to query")
                 Log.d("WallpaperListResponse", t.toString())
@@ -80,8 +85,6 @@ class EditFragment : Fragment() {
             }
 
         })
-
-
     }
 
     override fun onCreateView(
@@ -98,6 +101,13 @@ class EditFragment : Fragment() {
         recyclerView.adapter = recyclerAdapter
         recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
 
+        val onRefreshLayout = view.findViewById<SwipeRefreshLayout>(R.id.edit_fragment_swipe_refresh_layout)
+
+        onRefreshLayout.setOnRefreshListener {
+            queryWallpaperList()
+            onRefreshLayout.isRefreshing = false
+        }
+
         val editWallpaperFab =
             view.findViewById<FloatingActionButton>(R.id.edit_fragment_edit_wallpaper_fab)
 
@@ -109,10 +119,7 @@ class EditFragment : Fragment() {
                     Snackbar.LENGTH_LONG
                 ).show()
             } else {
-                (activity as DataPassInterface).passEditWallpaper(
-                    selectedWallpaper.stream().map { shownWallpaper[it] }
-                        .collect(Collectors.toList())
-                )
+                (activity as DataPassInterface).passEditWallpaper(selectedWallpaper)
             }
         }
 
@@ -128,19 +135,22 @@ class EditFragment : Fragment() {
                 ).show()
             } else {
                 selectedWallpaper.stream()
-                    .forEach { wallpaperApi.deleteWallpaper(shownWallpaper[it].name).enqueue(object: Callback<ResponseBody> {
-                        override fun onResponse(
-                            call: Call<ResponseBody>,
-                            response: Response<ResponseBody>
-                        ) {
+                    .forEach {
+                        wallpaperApi.deleteWallpaper(it.name)
+                            .enqueue(object : Callback<ResponseBody> {
+                                override fun onResponse(
+                                    call: Call<ResponseBody>,
+                                    response: Response<ResponseBody>
+                                ) {
+                                    queryWallpaperList()
+                                }
 
-                        }
+                                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
 
-                        override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                                }
 
-                        }
-
-                    }) }
+                            })
+                    }
             }
         }
 
@@ -213,6 +223,7 @@ class EditFragment : Fragment() {
          */
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val imageView: ImageView
+            lateinit var wallpaperInfoObject: WallpaperInfoObject
 
             init {
                 // Define click listener for the ViewHolder's View
@@ -236,39 +247,40 @@ class EditFragment : Fragment() {
         override fun onBindViewHolder(viewHolder: ViewHolder, position: Int) {
             // Get element from your dataset at this position and replace the
             // contents of the view with that element
+            viewHolder.wallpaperInfoObject = shownWallpaper[position]
 
-            if (selectedWallpaper.contains(viewHolder.adapterPosition)) {
+            if (selectedWallpaper.contains(viewHolder.wallpaperInfoObject)) {
                 viewHolder.imageView.setColorFilter(Color.argb(120, 200, 200, 255));
             } else {
                 viewHolder.imageView.setColorFilter(Color.argb(0, 200, 200, 255));
             }
 
             viewHolder.imageView.setOnLongClickListener {
-                if (!selectedWallpaper.contains(viewHolder.adapterPosition)) {
-                    selectedWallpaper.add(viewHolder.adapterPosition)
+                if (!selectedWallpaper.contains(viewHolder.wallpaperInfoObject)) {
+                    selectedWallpaper.add(viewHolder.wallpaperInfoObject)
                     viewHolder.imageView.setColorFilter(Color.argb(120, 200, 200, 255));
                 }
                 true
             }
 
             viewHolder.imageView.setOnClickListener {
-                if (selectedWallpaper.contains(viewHolder.adapterPosition)) {
-                    selectedWallpaper.remove(viewHolder.adapterPosition)
+                if (selectedWallpaper.contains(viewHolder.wallpaperInfoObject)) {
+                    selectedWallpaper.remove(viewHolder.wallpaperInfoObject)
                     viewHolder.imageView.setColorFilter(Color.argb(0, 200, 200, 255));
-                } else if (!selectedWallpaper.contains(viewHolder.adapterPosition) && selectedWallpaper.size > 0) {
-                    selectedWallpaper.add(viewHolder.adapterPosition)
+                } else if (!selectedWallpaper.contains(viewHolder.wallpaperInfoObject) && selectedWallpaper.size > 0) {
+                    selectedWallpaper.add(viewHolder.wallpaperInfoObject)
                     viewHolder.imageView.setColorFilter(Color.argb(120, 200, 200, 255));
                 }
                 true
             }
 
 
-            wallpaperApi.getThumbnail(dataSet[viewHolder.adapterPosition].name)
+            wallpaperApi.getThumbnail(viewHolder.wallpaperInfoObject.name)
                 .enqueue(object : Callback<ResponseBody> {
                     override fun onResponse(
                         call: Call<ResponseBody>, response: Response<ResponseBody>
                     ) {
-                        Log.d("thumbnail_response", dataSet[viewHolder.adapterPosition].name)
+                        Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
                         Log.d("thumbnail_response", response.message())
                         val inputStream = response.body()!!.byteStream()
                         val bitmap = BitmapFactory.decodeStream(inputStream)
@@ -277,7 +289,7 @@ class EditFragment : Fragment() {
                     }
 
                     override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                        Log.d("thumbnail_response", dataSet[viewHolder.adapterPosition].name)
+                        Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
                     }
 
                 })
@@ -286,7 +298,7 @@ class EditFragment : Fragment() {
 
         override fun onViewRecycled(holder: ViewHolder) {
             super.onViewRecycled(holder)
-            if (selectedWallpaper.contains(holder.adapterPosition)) {
+            if (selectedWallpaper.contains(holder.wallpaperInfoObject)) {
                 holder.imageView.setColorFilter(Color.argb(120, 200, 200, 255));
             } else {
                 holder.imageView.setColorFilter(Color.argb(0, 200, 200, 255));
