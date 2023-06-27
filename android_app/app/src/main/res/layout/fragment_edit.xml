@@ -48,7 +48,7 @@
                 app:rippleColor="#FFFFFF" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/action_settings"
+                android:id="@+id/edit_fragment_delete_wallpaper"
                 style="@style/Theme.WallpaperWizard.FloatingActionButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -56,7 +56,7 @@
                 android:layout_marginTop="600dp"
                 android:layout_marginBottom="48dp"
                 android:backgroundTint="@color/white"
-                android:contentDescription="@string/applyConfig"
+                android:contentDescription="@string/deleteWallpaper"
                 android:scaleType="center"
                 android:src="@drawable/baseline_delete_24"
                 app:layout_constraintBottom_toBottomOf="parent"

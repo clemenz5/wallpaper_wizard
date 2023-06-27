@@ -109,7 +109,38 @@ class EditFragment : Fragment() {
                     Snackbar.LENGTH_LONG
                 ).show()
             } else {
-                (activity as DataPassInterface).passEditWallpaper(selectedWallpaper.stream().map { shownWallpaper[it] }.collect(Collectors.toList()))
+                (activity as DataPassInterface).passEditWallpaper(
+                    selectedWallpaper.stream().map { shownWallpaper[it] }
+                        .collect(Collectors.toList())
+                )
+            }
+        }
+
+        val deleteWallpaperFab =
+            view.findViewById<FloatingActionButton>(R.id.edit_fragment_delete_wallpaper)
+
+        deleteWallpaperFab.setOnClickListener {
+            if (selectedWallpaper.isEmpty()) {
+                Snackbar.make(
+                    view,
+                    "Select a wallpaper to delete",
+                    Snackbar.LENGTH_LONG
+                ).show()
+            } else {
+                selectedWallpaper.stream()
+                    .forEach { wallpaperApi.deleteWallpaper(shownWallpaper[it].name).enqueue(object: Callback<ResponseBody> {
+                        override fun onResponse(
+                            call: Call<ResponseBody>,
+                            response: Response<ResponseBody>
+                        ) {
+
+                        }
+
+                        override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+
+                        }
+
+                    }) }
             }
         }
 

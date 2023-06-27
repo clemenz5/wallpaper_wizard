@@ -21,6 +21,11 @@ interface WallpaperApi {
         @Query("crop") crop: String
     ): Call<ResponseBody>
 
+    @DELETE("/wallpaper/{wallpaper_name}")
+    fun deleteWallpaper(
+        @Path("wallpaper_name") wallpaper_name: String
+    ): Call<ResponseBody>
+
     @GET("/wallpaper")
     fun getWallpaper(@Query("tags") tags: String, @Query("sync") sync: String): Call<ResponseBody>
 
