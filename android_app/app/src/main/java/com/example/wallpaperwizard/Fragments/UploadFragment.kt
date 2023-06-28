@@ -9,7 +9,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
-import android.graphics.RectF
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
@@ -26,7 +25,6 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.viewpager2.widget.ViewPager2
 import androidx.work.*
 import com.example.wallpaperwizard.Components.TagGroup.TagGroup
-import com.example.wallpaperwizard.DataPassInterface
 import com.example.wallpaperwizard.NotificationProvider
 import com.example.wallpaperwizard.R
 import com.example.wallpaperwizard.TagsResult
@@ -45,16 +43,16 @@ import java.util.stream.Collectors
 
 
 class UploadFragment : Fragment(), UploadFragmentInterface {
-    var upload_file_url = ""
+    var uploadFileUrl = ""
     lateinit var notificationManager: NotificationManager
-    lateinit var notiProvider: NotificationProvider
+    private lateinit var notiProvider: NotificationProvider
     lateinit var tagsResultCallback: Callback<TagsResult>
-    val wallpaperApi = HomeFragment.RetrofitHelper.getInstance().create(WallpaperApi::class.java)
-    lateinit var current_bitmap: Bitmap
-    lateinit var wallpaper_preview: TouchImageView
-    val image_stack = mutableListOf<Uri>()
-    var wallpaper_info_stack = mutableListOf<WallpaperInfoObject>()
-    var updateingWallpaper = false
+    val wallpaperApi: WallpaperApi =
+        HomeFragment.RetrofitHelper.getInstance().create(WallpaperApi::class.java)
+    lateinit var currentBitmap: Bitmap
+    lateinit var wallpaperPreview: TouchImageView
+    private val wallpaperStack = mutableListOf<Any>()
+    var updatingWallpaper = false
     var currentWallpaperName = ""
     lateinit var tagGroup: TagGroup
 
@@ -68,67 +66,45 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
     override fun onViewCreated(parent: View, savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val context = requireContext()
+
+        //Notification Setup
         notiProvider = NotificationProvider(context)
         notificationManager = ContextCompat.getSystemService(
             context, NotificationManager::class.java
         )!!
         notiProvider.createNotificationChannels(notificationManager)
+
+
         Log.d(
             "worker_list",
             WorkManager.getInstance(context).getWorkInfosByTag("upload").get().toString()
         )
 
-        val main_parent_view: ConstraintLayout = parent.findViewById(R.id.upload_parent_view)
-        tagGroup = parent.findViewById(R.id.upload_tag_group)
-        val swipeRefreshLayout =
-            parent.findViewById<SwipeRefreshLayout>(R.id.upload_swipe_refresh_layout)
-        val clearWallpaperFab =
-            parent.findViewById<FloatingActionButton>(R.id.upload_fragment_clear_wallpaper)
+        val mainParentView: ConstraintLayout = parent.findViewById(R.id.upload_parent_view)
 
+        tagGroup = parent.findViewById(R.id.upload_tag_group)
         val prefs = context.getSharedPreferences(
             "wallpaper_wizard.preferences", Context.MODE_PRIVATE
         )
-        val preferred_tags = prefs.getString("tags_preferences", "")!!.split(";").stream()
+        val preferredTags = prefs.getString("tags_preferences", "")!!.split(";").stream()
             .filter { str -> str != "" }.collect(
                 Collectors.toList()
             )
-
-        clearWallpaperFab.setOnClickListener(object : OnClickListener {
-            override fun onClick(p0: View?) {
-                wallpaper_preview.x = 0f
-                wallpaper_preview.animate().alpha(0f).x(-800F).setDuration(500)
-                    .withEndAction {
-                        wallpaper_preview.visibility = GONE
-                        wallpaper_preview.translationY = 0f
-                        wallpaper_preview.x = 0f
-                        if (wallpaper_info_stack.isNotEmpty()) {
-                            load_from_wallpaper_info_stack()
-                        } else if (image_stack.isNotEmpty()) {
-                            load_from_stack()
-                        }
-                    }
-
-            }
-
-        })
-
-
         tagsResultCallback = object : Callback<TagsResult> {
             fun errorHandle() {
                 Snackbar.make(
-                    main_parent_view,
+                    mainParentView,
                     "Error while getting the Tags. Offline functionality will be implemented soon",
                     Snackbar.LENGTH_LONG
-                ).setAction("Retry") { view ->
+                ).setAction("Retry") {
                     wallpaperApi.getTags().enqueue(this)
                 }.show()
             }
 
             override fun onResponse(call: Call<TagsResult>, response: Response<TagsResult>) {
-
                 if (response.code() == 200) {
                     Log.d("tags_response", response.body()!!.tags.toList().toString())
-                    tagGroup.setTags(response.body()!!.tags, preferred_tags.toTypedArray())
+                    tagGroup.setTags(response.body()!!.tags, preferredTags.toTypedArray())
                 } else {
                     errorHandle()
                 }
@@ -138,55 +114,69 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
                 errorHandle()
             }
         }
-
         wallpaperApi.getTags().enqueue(tagsResultCallback)
+
+
+        val swipeRefreshLayout =
+            parent.findViewById<SwipeRefreshLayout>(R.id.upload_swipe_refresh_layout)
         swipeRefreshLayout.setOnRefreshListener {
             wallpaperApi.getTags().enqueue(tagsResultCallback)
             swipeRefreshLayout.isRefreshing = false
         }
 
 
-        wallpaper_preview = parent.findViewById<TouchImageView>(R.id.wallpaper_preview)
-        wallpaper_preview.visibility = GONE
-        wallpaper_preview.setOnTouchImageViewListener(object : OnTouchImageViewListener {
+        val clearWallpaperFab =
+            parent.findViewById<FloatingActionButton>(R.id.upload_fragment_clear_wallpaper)
+        clearWallpaperFab.setOnClickListener {
+            wallpaperPreview.x = 0f
+            wallpaperPreview.animate().alpha(0f).x(-800F).setDuration(500).withEndAction {
+                wallpaperPreview.visibility = GONE
+                wallpaperPreview.translationY = 0f
+                wallpaperPreview.x = 0f
+                if (wallpaperStack.isNotEmpty()) {
+                    loadFromStack()
+                }
+            }
+        }
+
+
+
+
+        wallpaperPreview = parent.findViewById<TouchImageView>(R.id.wallpaper_preview)
+        wallpaperPreview.visibility = GONE
+        wallpaperPreview.setOnTouchImageViewListener(object : OnTouchImageViewListener {
             override fun onMove() {
                 requireActivity().findViewById<ViewPager2>(R.id.pager).isUserInputEnabled = false
             }
         })
 
-        val scroll_overlay = parent.findViewById<View>(R.id.scroll_overlay)
-        scroll_overlay.setOnTouchListener(object : OnTouchListener {
-            override fun onTouch(p0: View?, p1: MotionEvent?): Boolean {
-                Log.d("scrolling_behaviour", "overlay is touched")
-                requireActivity().findViewById<ViewPager2>(R.id.pager).isUserInputEnabled = true
-                return true
-            }
+        val scrollOverlay = parent.findViewById<View>(R.id.scroll_overlay)
+        scrollOverlay.setOnTouchListener { p0, _ ->
+            p0.performClick()
+            Log.d("scrolling_behaviour", "overlay is touched")
+            requireActivity().findViewById<ViewPager2>(R.id.pager).isUserInputEnabled = true
+            true
+        }
 
-        })
-
-        val button_select_wallpaper =
-            parent.findViewById<FloatingActionButton>(R.id.select_wallpaper)
-        val button_upload_wallpaper =
-            parent.findViewById<FloatingActionButton>(R.id.upload_wallpaper)
-
+        val buttonSelectWallpaper = parent.findViewById<FloatingActionButton>(R.id.select_wallpaper)
         val startForResult = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { result: ActivityResult ->
             if (result.resultCode == Activity.RESULT_OK) {
-                if(result.data?.clipData?.itemCount != null){
+                if (result.data?.clipData?.itemCount != null) {
                     for (i in 0 until result.data?.clipData!!.itemCount) {
                         Log.d("selection", result.data!!.clipData!!.getItemAt(i).uri.toString())
-                        image_stack.add(result.data!!.clipData!!.getItemAt(i).uri)
+                        wallpaperStack.add(result.data!!.clipData!!.getItemAt(i).uri)
                     }
-                    load_from_stack()
+                    loadFromStack()
                 } else {
                     Log.d("selection", result.data?.data.toString())
-                    image_stack.add(result.data!!.data!!)
-                    load_from_stack()
+                    wallpaperStack.add(result.data!!.data!!)
+                    loadFromStack()
                 }
             }
         }
-        button_select_wallpaper.setOnClickListener { view ->
+        buttonSelectWallpaper.setOnClickListener {
             if (checkSelfPermission(
                     context, android.Manifest.permission.WRITE_EXTERNAL_STORAGE
                 ) == PackageManager.PERMISSION_GRANTED
@@ -198,52 +188,53 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
                 startForResult.launch(intent)
             } else {
                 Snackbar.make(
-                    main_parent_view,
+                    mainParentView,
                     "Please allow this app to access your storage",
                     Snackbar.LENGTH_LONG
                 ).show()
             }
-
-
         }
 
-        button_upload_wallpaper.setOnClickListener { view ->
+        val buttonUploadWallpaper = parent.findViewById<FloatingActionButton>(R.id.upload_wallpaper)
+
+
+        buttonUploadWallpaper.setOnClickListener {
             Log.d(
                 "selected_tags", tagGroup.getSelectedTags().toList().toString()
             )
-            if (!this::current_bitmap.isInitialized) {
+            if (!this::currentBitmap.isInitialized) {
                 Snackbar.make(
-                    main_parent_view, "Please select a wallpaper", Snackbar.LENGTH_LONG
+                    mainParentView, "Please select a wallpaper", Snackbar.LENGTH_LONG
                 ).show()
             } else {
                 val constraints: Constraints =
                     Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
                 val crop =
-                    "${wallpaper_preview.zoomedRect.left * current_bitmap.width},${wallpaper_preview.zoomedRect.top * current_bitmap.height},${wallpaper_preview.zoomedRect.right * current_bitmap.width},${wallpaper_preview.zoomedRect.bottom * current_bitmap.height}"
-                val upload_work_request: WorkRequest =
+                    "${wallpaperPreview.zoomedRect.left * currentBitmap.width},${wallpaperPreview.zoomedRect.top * currentBitmap.height},${wallpaperPreview.zoomedRect.right * currentBitmap.width},${wallpaperPreview.zoomedRect.bottom * currentBitmap.height}"
+                val uploadWorkRequest: WorkRequest =
                     OneTimeWorkRequestBuilder<WallpaperUploaderWorker>().setInputData(
-                        Data.Builder().putString("upload_file_url", upload_file_url)
-                            .putString("rect", wallpaper_preview.zoomedRect.toString())
-                            .putBoolean("updating", updateingWallpaper)
+                        Data.Builder().putString("upload_file_url", uploadFileUrl)
+                            .putString("rect", wallpaperPreview.zoomedRect.toString())
+                            .putBoolean("updating", updatingWallpaper)
                             .putString("name", currentWallpaperName)
                             .putStringArray("upload_tags", tagGroup.getSelectedTags())
                             .putString("crop_preference", crop).build()
                     ).setConstraints(constraints).addTag("upload").build()
-                WorkManager.getInstance(context).enqueue(upload_work_request)
-                wallpaper_preview.animate().alpha(0f).translationY(-800F).setDuration(500)
+                WorkManager.getInstance(context).enqueue(uploadWorkRequest)
+                wallpaperPreview.animate().alpha(0f).translationY(-800F).setDuration(500)
                     .withEndAction {
-                        wallpaper_preview.visibility = GONE
-                        wallpaper_preview.translationY = 0f
+                        wallpaperPreview.visibility = GONE
+                        wallpaperPreview.translationY = 0f
                     }
-                updateingWallpaper = false
+                updatingWallpaper = false
 
                 Snackbar.make(
-                    main_parent_view, "Uploading your wallpaper", Snackbar.LENGTH_LONG
+                    mainParentView, "Uploading your wallpaper", Snackbar.LENGTH_LONG
                 ).show()
 
 
-                WorkManager.getInstance(context).getWorkInfoByIdLiveData(upload_work_request.id)
+                WorkManager.getInstance(context).getWorkInfoByIdLiveData(uploadWorkRequest.id)
                     .observeForever { workInfo ->
                         if (workInfo != null && workInfo.state == WorkInfo.State.ENQUEUED) {
                             val notificationManager = NotificationManagerCompat.from(context)
@@ -255,8 +246,8 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
                         if (workInfo != null && workInfo.state.isFinished) {
                             if (workInfo.state == WorkInfo.State.SUCCEEDED) {
                                 Snackbar.make(
-                                    main_parent_view,
-                                    "Sucessfully uploaded your wallpaper",
+                                    mainParentView,
+                                    "Successfully uploaded your wallpaper",
                                     Snackbar.LENGTH_LONG
                                 ).show()
                                 notificationManager.notify(
@@ -265,7 +256,7 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
                                 notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
                             } else {
                                 Snackbar.make(
-                                    main_parent_view,
+                                    mainParentView,
                                     "There was a problem while uploading",
                                     Snackbar.LENGTH_LONG
                                 ).show()
@@ -276,89 +267,74 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
                             }
                         }
                     }
-                load_from_stack()
-                load_from_wallpaper_info_stack()
+                loadFromStack()
+            }
+        }
+    }
+
+    override fun loadFromStack() {
+        if (wallpaperStack.size == 0) return
+        when (val currentWallpaperObject = wallpaperStack.removeAt(wallpaperStack.size - 1)) {
+            is Uri -> {
+                val currentUri: Uri = currentWallpaperObject
+                val source = requireContext().let {
+                    ImageDecoder.createSource(
+                        it.contentResolver, currentUri
+                    )
+                }
+                currentBitmap = ImageDecoder.decodeBitmap(source)
+                uploadFileUrl = RealPathUtil.getRealPath(requireContext(), currentUri)!!
+                animateWallpaperLoading()
             }
 
-        }
-    }
-
-    private fun load_from_stack() {
-        if (image_stack.size == 0) return
-        val current_uri = image_stack.removeAt(image_stack.size - 1)
-        val source = requireContext().let {
-            ImageDecoder.createSource(
-                it.contentResolver, current_uri
-            )
-        }
-        current_bitmap = ImageDecoder.decodeBitmap(source)
-
-        var filePath: String = RealPathUtil.getRealPath(requireContext(), current_uri)!!
-        upload_file_url = filePath
-        wallpaper_preview.alpha = 0f
-        wallpaper_preview.visibility = View.VISIBLE
-        wallpaper_preview.y = 800f
-        wallpaper_preview.x = 0f
-
-        wallpaper_preview.resetZoomAnimated()
-
-        wallpaper_preview.setImageBitmap(current_bitmap)
-        wallpaper_preview.animate().alpha(1f).y(0F).setDuration(500).withEndAction {
-            wallpaper_preview.alpha = 1f
-            wallpaper_preview.y = 0f
-        }
-    }
-
-    override fun set_wallpaper_info_stack(wallpaper_info_stack: List<WallpaperInfoObject>) {
-        this.wallpaper_info_stack = wallpaper_info_stack.toMutableList()
-    }
-
-    override fun load_from_wallpaper_info_stack() {
-        if (wallpaper_info_stack.size == 0) return
-        val current_wallpaper_info = wallpaper_info_stack.removeAt(wallpaper_info_stack.size - 1)
-        tagGroup.setTags(tagGroup.tags, current_wallpaper_info.tags)
-        val current_wallpaper = wallpaperApi.getWallpaperByName(current_wallpaper_info.name)
-            .enqueue(object : Callback<ResponseBody> {
-                override fun onResponse(p0: Call<ResponseBody>, p1: Response<ResponseBody>) {
-                    val inputStream = p1.body()!!.byteStream()
-                    current_bitmap = BitmapFactory.decodeStream(inputStream)
-                    inputStream.close()
-
-                    wallpaper_preview.alpha = 0f
-                    wallpaper_preview.visibility = View.VISIBLE
-                    wallpaper_preview.y = 800f
-                    wallpaper_preview.x = 0f
-
-                    wallpaper_preview.resetZoomAnimated()
-
-                    wallpaper_preview.setImageBitmap(current_bitmap)
-
-                    updateingWallpaper = true
-                    currentWallpaperName = current_wallpaper_info.name
-                    wallpaper_preview.animate().alpha(1f).y(0F).setDuration(500)
-                        .withEndAction {
-                            wallpaper_preview.alpha = 1f
-                            wallpaper_preview.translationY = 0f
+            is WallpaperInfoObject -> {
+                Log.d("currentWallpaperObject", currentWallpaperObject.toString())
+                val currentWallpaperInfoObject: WallpaperInfoObject = currentWallpaperObject
+                tagGroup.setTags(tagGroup.tags, currentWallpaperInfoObject.tags)
+                wallpaperApi.getWallpaperByName(currentWallpaperInfoObject.name)
+                    .enqueue(object : Callback<ResponseBody> {
+                        override fun onResponse(
+                            p0: Call<ResponseBody>, p1: Response<ResponseBody>
+                        ) {
+                            val inputStream = p1.body()!!.byteStream()
+                            currentBitmap = BitmapFactory.decodeStream(inputStream)
+                            inputStream.close()
+                            animateWallpaperLoading()
                         }
-                }
 
-                override fun onFailure(p0: Call<ResponseBody>, p1: Throwable) {
-                    TODO("Not yet implemented")
-                }
+                        override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                            TODO("Not yet implemented")
+                        }
+                    })
+            }
 
-            })
+            else -> {
+                return
+            }
+        }
     }
 
-    override fun onStop() {
-        super.onStop()
+    private fun animateWallpaperLoading() {
+        wallpaperPreview.alpha = 0f
+        wallpaperPreview.visibility = VISIBLE
+        wallpaperPreview.y = 800f
+        wallpaperPreview.x = 0f
+
+        wallpaperPreview.resetZoomAnimated()
+
+        wallpaperPreview.setImageBitmap(currentBitmap)
+        wallpaperPreview.animate().alpha(1f).y(0F).setDuration(500).withEndAction {
+            wallpaperPreview.alpha = 1f
+            wallpaperPreview.y = 0f
+        }
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun addToWallpaperStack(wallpaper_info_stack: List<WallpaperInfoObject>) {
+        this.wallpaperStack.addAll(wallpaper_info_stack.toMutableList())
     }
 }
 
 interface UploadFragmentInterface {
-    fun set_wallpaper_info_stack(wallpaper_info_stack: List<WallpaperInfoObject>)
-    fun load_from_wallpaper_info_stack()
+    fun addToWallpaperStack(wallpaper_info_stack: List<WallpaperInfoObject>)
+    fun loadFromStack()
 }
