@@ -74,8 +74,21 @@
         android:layout_marginTop="600dp"
         android:layout_marginBottom="48dp"
         android:backgroundTint="@color/white"
-        android:src="@drawable/baseline_save_24"
+        android:src="@drawable/baseline_image_24"
         app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/upload_fragment_clear_wallpaper"
+        style="@style/Theme.WallpaperWizard.FloatingActionButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="40dp"
+        android:layout_marginTop="40dp"
+        android:layout_marginBottom="48dp"
+        android:backgroundTint="@color/white"
+        android:src="@drawable/close_24px"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

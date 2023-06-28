@@ -188,6 +188,49 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "crop",
+            "in": "query",
+            "description": "The crop associated with the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation"
+          },
+          "404": {
+            "description": "Specified wallpaper not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WallpaperNotFound"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "wallpaper"
+        ],
+        "summary": "Delete a apecific wallpaper",
+        "description": "Delete a specific wallpaper by its name",
+        "operationId": "deleteWallpaperByName",
+        "parameters": [
+          {
+            "name": "wallpaper_name",
+            "in": "path",
+            "description": "The exact name of the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -257,6 +300,50 @@
                       "$ref": "#/components/schemas/Tags"
                     }
                   }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/thumbnail/{wallpaper_name}": {
+      "get": {
+        "tags": [
+          "thumbnail"
+        ],
+        "summary": "Get a thumbnail for a specific wallpaper",
+        "description": "Get a thumbnail for a wallpaper by specifying its name",
+        "operationId": "getThumbnailforWallpaper",
+        "parameters": [
+          {
+            "name": "wallpaper_name",
+            "in": "path",
+            "description": "The exact name of the wallpaper",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tag not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagNotFound"
                 }
               }
             }
