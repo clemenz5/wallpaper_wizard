@@ -31,6 +31,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:hint="Search"
+                    android:maxLines="1"
+                    android:maxLength="20"
                     android:inputType="textFilter"
                     android:drawableEnd="@drawable/search_24px"
                     android:layout_marginStart="20dp"
