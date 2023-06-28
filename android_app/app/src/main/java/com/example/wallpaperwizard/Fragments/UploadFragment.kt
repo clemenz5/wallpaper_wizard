@@ -173,11 +173,17 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
             ActivityResultContracts.StartActivityForResult()
         ) { result: ActivityResult ->
             if (result.resultCode == Activity.RESULT_OK) {
-                for (i in 0 until result.data!!.clipData!!.itemCount) {
-                    Log.d("selection", result.data!!.clipData!!.getItemAt(i).uri.toString())
-                    image_stack.add(result.data!!.clipData!!.getItemAt(i).uri)
+                if(result.data?.clipData?.itemCount != null){
+                    for (i in 0 until result.data?.clipData!!.itemCount) {
+                        Log.d("selection", result.data!!.clipData!!.getItemAt(i).uri.toString())
+                        image_stack.add(result.data!!.clipData!!.getItemAt(i).uri)
+                    }
+                    load_from_stack()
+                } else {
+                    Log.d("selection", result.data?.data.toString())
+                    image_stack.add(result.data!!.data!!)
+                    load_from_stack()
                 }
-                load_from_stack()
             }
         }
         button_select_wallpaper.setOnClickListener { view ->
