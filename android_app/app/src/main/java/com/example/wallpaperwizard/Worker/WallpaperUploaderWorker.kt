@@ -19,6 +19,7 @@ class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParam
     Worker(appContext, workerParams) {
     lateinit var notificationManager: NotificationManager
     val notiProvider = NotificationProvider(applicationContext)
+
     object RetrofitHelper {
         val baseUrl = "https://ww.keefer.de"
         fun getInstance(): Retrofit {
@@ -28,7 +29,10 @@ class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParam
     }
 
     override fun doWork(): Result {
-        Log.d("worker_list", WorkManager.getInstance(applicationContext).getWorkInfosByTag("upload").get().toString())
+        Log.d(
+            "worker_list",
+            WorkManager.getInstance(applicationContext).getWorkInfosByTag("upload").get().toString()
+        )
 
         // Show the notification
         notificationManager = ContextCompat.getSystemService(
@@ -37,33 +41,51 @@ class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParam
         notiProvider.createNotificationChannels(notificationManager)
 
         notificationManager.cancel(notiProvider.UPLOAD_PENDING_NOTIFICATION_ID)
-        notificationManager.notify(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID, notiProvider.UPLOAD_RUNNING_NOTIFICATION)
+        notificationManager.notify(
+            notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID,
+            notiProvider.UPLOAD_RUNNING_NOTIFICATION
+        )
 
         val wallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
-        val upload_file = File(inputData.getString("upload_file_url"))
-        val request_file = upload_file.asRequestBody("multipart/form-data".toMediaTypeOrNull())
-        val multipart_file =
-            MultipartBody.Part.createFormData("image", upload_file.name, request_file);
-        val request = wallpaperApi.uploadWallpaper(multipart_file, inputData.getStringArray("upload_tags")!!.joinToString(prefix = "", separator = ";", postfix=""), inputData.getString("crop_preference")!!)
-        Log.d("upload_request", request.request().url.toString())
-        val response = request.execute()
+        if (inputData.getBoolean("updating", false)) {
+            wallpaperApi.updateWallpaper(
+                inputData.getString("name")!!,
+                inputData.getStringArray("upload_tags")!!
+                    .joinToString(prefix = "", separator = ";", postfix = ""),
+                inputData.getString("crop_preference")!!
+            ).execute()
+            return Result.success()
+        } else {
+            val upload_file = File(inputData.getString("upload_file_url"))
+            val request_file = upload_file.asRequestBody("multipart/form-data".toMediaTypeOrNull())
+            val multipart_file =
+                MultipartBody.Part.createFormData("image", upload_file.name, request_file);
+            val request = wallpaperApi.uploadWallpaper(
+                multipart_file,
+                inputData.getStringArray("upload_tags")!!
+                    .joinToString(prefix = "", separator = ";", postfix = ""),
+                inputData.getString("crop_preference")!!
+            )
+            Log.d("upload_request", request.request().url.toString())
+            val response = request.execute()
 
-        if (response.isSuccessful) {
-            Log.d("tags_response", response.toString())
-            if (response.code() != 200) {
+            if (response.isSuccessful) {
+                Log.d("tags_response", response.toString())
+                if (response.code() != 200) {
+                    notificationManager.notify(1, notiProvider.UPLOAD_FAILURE_NOTIFICATION)
+                    notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
+                    return Result.failure()
+                }
+                notificationManager.notify(1, notiProvider.UPLOAD_SUCCESS_NOTIFICATION)
+                notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
+                return Result.success()
+
+            } else {
+                Log.d("upload_response", response.toString())
                 notificationManager.notify(1, notiProvider.UPLOAD_FAILURE_NOTIFICATION)
                 notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
                 return Result.failure()
             }
-            notificationManager.notify(1, notiProvider.UPLOAD_SUCCESS_NOTIFICATION)
-            notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
-            return Result.success()
-
-        } else {
-            Log.d("upload_response", response.toString())
-            notificationManager.notify(1, notiProvider.UPLOAD_FAILURE_NOTIFICATION)
-            notificationManager.cancel(notiProvider.UPLOAD_RUNNING_NOTIFICATION_ID)
-            return Result.failure()
         }
     }
 }
