@@ -15,13 +15,13 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.Retrofit
 import java.io.File
 
-class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParameters) :
+class WallpaperUploaderWorker(appContext: Context, private val workerParams: WorkerParameters) :
     Worker(appContext, workerParams) {
     lateinit var notificationManager: NotificationManager
-    val notiProvider = NotificationProvider(applicationContext)
+    private val notiProvider = NotificationProvider(applicationContext)
 
     object RetrofitHelper {
-        val baseUrl = "https://ww.keefer.de"
+        private const val baseUrl = "https://ww.keefer.de"
         fun getInstance(): Retrofit {
             return Retrofit.Builder().baseUrl(baseUrl)
                 .build()
@@ -56,12 +56,12 @@ class WallpaperUploaderWorker(appContext: Context, val workerParams: WorkerParam
             ).execute()
             return Result.success()
         } else {
-            val upload_file = File(inputData.getString("upload_file_url"))
-            val request_file = upload_file.asRequestBody("multipart/form-data".toMediaTypeOrNull())
-            val multipart_file =
-                MultipartBody.Part.createFormData("image", upload_file.name, request_file);
+            val uploadFile = File(inputData.getString("upload_file_url")!!)
+            val requestFile = uploadFile.asRequestBody("multipart/form-data".toMediaTypeOrNull())
+            val multipartFile =
+                MultipartBody.Part.createFormData("image", uploadFile.name, requestFile);
             val request = wallpaperApi.uploadWallpaper(
-                multipart_file,
+                multipartFile,
                 inputData.getStringArray("upload_tags")!!
                     .joinToString(prefix = "", separator = ";", postfix = ""),
                 inputData.getString("crop_preference")!!
