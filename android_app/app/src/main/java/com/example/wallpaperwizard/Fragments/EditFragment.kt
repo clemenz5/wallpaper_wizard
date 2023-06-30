@@ -164,7 +164,7 @@ class EditFragment : Fragment() {
                     view,
                     "Error while getting the Tags. Offline functionality will be implemented soon",
                     Snackbar.LENGTH_LONG
-                ).setAction("Retry") { view ->
+                ).setAction("Retry") {
                     wallpaperApi.getTags().enqueue(this)
                 }.show()
             }
