@@ -8,6 +8,7 @@ import androidx.work.WorkManager
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.example.wallpaperwizard.NotificationProvider
+import com.example.wallpaperwizard.RetrofitHelper
 import com.example.wallpaperwizard.WallpaperApi
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -19,14 +20,6 @@ class WallpaperUploaderWorker(appContext: Context, private val workerParams: Wor
     Worker(appContext, workerParams) {
     lateinit var notificationManager: NotificationManager
     private val notiProvider = NotificationProvider(applicationContext)
-
-    object RetrofitHelper {
-        private const val baseUrl = "https://ww.keefer.de"
-        fun getInstance(): Retrofit {
-            return Retrofit.Builder().baseUrl(baseUrl)
-                .build()
-        }
-    }
 
     override fun doWork(): Result {
         Log.d(
