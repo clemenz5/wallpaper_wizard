@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.example.wallpaperwizard.NotificationProvider
+import com.example.wallpaperwizard.RetrofitHelper
 import com.example.wallpaperwizard.WallpaperApi
 import retrofit2.Retrofit
 
@@ -19,14 +20,6 @@ class WallpaperChangerWorker(appContext: Context, workerParams: WorkerParameters
 
     lateinit var notificationManager: NotificationManager
     val notiProvider = NotificationProvider(applicationContext)
-    object RetrofitHelper {
-        val baseUrl = "https://ww.keefer.de"
-
-        fun getInstance(): Retrofit {
-            return Retrofit.Builder().baseUrl(baseUrl)
-                .build()
-        }
-    }
 
     override fun doWork(): Result {
 

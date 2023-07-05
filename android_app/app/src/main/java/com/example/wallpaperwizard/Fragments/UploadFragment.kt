@@ -27,6 +27,7 @@ import androidx.work.*
 import com.example.wallpaperwizard.Components.TagGroup.TagGroup
 import com.example.wallpaperwizard.NotificationProvider
 import com.example.wallpaperwizard.R
+import com.example.wallpaperwizard.RetrofitHelper
 import com.example.wallpaperwizard.TagsResult
 import com.example.wallpaperwizard.WallpaperApi
 import com.example.wallpaperwizard.WallpaperInfoObject
@@ -47,15 +48,14 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
     lateinit var notificationManager: NotificationManager
     private lateinit var notiProvider: NotificationProvider
     lateinit var tagsResultCallback: Callback<TagsResult>
-    val wallpaperApi: WallpaperApi =
-        HomeFragment.RetrofitHelper.getInstance().create(WallpaperApi::class.java)
+    val wallpaperApi: WallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
     lateinit var currentBitmap: Bitmap
     lateinit var wallpaperPreview: TouchImageView
     private val wallpaperStack = mutableListOf<Any>()
     var updatingWallpaper = false
     var currentWallpaperName = ""
     lateinit var tagGroup: TagGroup
-
+    lateinit var mainParentView: ConstraintLayout
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -80,7 +80,13 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
             WorkManager.getInstance(context).getWorkInfosByTag("upload").get().toString()
         )
 
-        val mainParentView: ConstraintLayout = parent.findViewById(R.id.upload_parent_view)
+        mainParentView = parent.findViewById(R.id.upload_parent_view)
+
+        val swipeRefreshLayout =
+            parent.findViewById<SwipeRefreshLayout>(R.id.upload_swipe_refresh_layout)
+        swipeRefreshLayout.setOnRefreshListener {
+            wallpaperApi.getTags().enqueue(tagsResultCallback)
+        }
 
         tagGroup = parent.findViewById(R.id.upload_tag_group)
         val prefs = context.getSharedPreferences(
@@ -92,6 +98,7 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
             )
         tagsResultCallback = object : Callback<TagsResult> {
             fun errorHandle() {
+                swipeRefreshLayout.isRefreshing = false
                 Snackbar.make(
                     mainParentView,
                     "Error while getting the Tags. Offline functionality will be implemented soon",
@@ -103,6 +110,7 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
 
             override fun onResponse(call: Call<TagsResult>, response: Response<TagsResult>) {
                 if (response.code() == 200) {
+                    swipeRefreshLayout.isRefreshing = false
                     Log.d("tags_response", response.body()!!.tags.toList().toString())
                     tagGroup.setTags(response.body()!!.tags, preferredTags.toTypedArray())
                 } else {
@@ -115,14 +123,6 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
             }
         }
         wallpaperApi.getTags().enqueue(tagsResultCallback)
-
-
-        val swipeRefreshLayout =
-            parent.findViewById<SwipeRefreshLayout>(R.id.upload_swipe_refresh_layout)
-        swipeRefreshLayout.setOnRefreshListener {
-            wallpaperApi.getTags().enqueue(tagsResultCallback)
-            swipeRefreshLayout.isRefreshing = false
-        }
 
 
         val clearWallpaperFab =
@@ -293,17 +293,31 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
                 tagGroup.setTags(tagGroup.tags, currentWallpaperInfoObject.tags)
                 wallpaperApi.getWallpaperByName(currentWallpaperInfoObject.name)
                     .enqueue(object : Callback<ResponseBody> {
+
+                        fun errorHandle() {
+                            Snackbar.make(
+                                mainParentView,
+                                "Error while getting the Wallpaper",
+                                Snackbar.LENGTH_LONG
+                            ).show()
+                            loadFromStack()
+                        }
+
                         override fun onResponse(
                             p0: Call<ResponseBody>, p1: Response<ResponseBody>
                         ) {
-                            val inputStream = p1.body()!!.byteStream()
-                            currentBitmap = BitmapFactory.decodeStream(inputStream)
-                            inputStream.close()
-                            animateWallpaperLoading()
+                            if (p1.code() == 200) {
+                                val inputStream = p1.body()!!.byteStream()
+                                currentBitmap = BitmapFactory.decodeStream(inputStream)
+                                inputStream.close()
+                                animateWallpaperLoading()
+                            } else {
+                                errorHandle()
+                            }
                         }
 
                         override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                            TODO("Not yet implemented")
+                            errorHandle()
                         }
                     })
             }

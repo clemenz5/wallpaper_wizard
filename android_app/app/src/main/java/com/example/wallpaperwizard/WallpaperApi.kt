@@ -3,6 +3,8 @@ package com.example.wallpaperwizard
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Call
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
 
 interface WallpaperApi {
@@ -40,6 +42,14 @@ interface WallpaperApi {
     fun getTags(): Call<TagsResult>
 
 
+}
+
+object RetrofitHelper {
+    private const val baseUrl = "https://ww.keefer.de"
+    fun getInstance(): Retrofit {
+        return Retrofit.Builder().baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create()).build()
+    }
 }
 
 data class TagsResult(

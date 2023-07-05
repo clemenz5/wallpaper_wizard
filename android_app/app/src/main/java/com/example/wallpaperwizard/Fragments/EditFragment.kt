@@ -18,6 +18,7 @@ import com.example.wallpaperwizard.Components.TagGroup.OnTagSelectionChangeListe
 import com.example.wallpaperwizard.Components.TagGroup.TagGroup
 import com.example.wallpaperwizard.DataPassInterface
 import com.example.wallpaperwizard.R
+import com.example.wallpaperwizard.RetrofitHelper
 import com.example.wallpaperwizard.TagsResult
 import com.example.wallpaperwizard.WallpaperApi
 import com.example.wallpaperwizard.WallpaperInfoObject
@@ -29,12 +30,8 @@ import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.util.stream.Collectors
 
-
-val wallpaperApi = EditFragment.RetrofitHelper.getInstance().create(WallpaperApi::class.java)
 
 class EditFragment : Fragment() {
     var wallpaperList: List<WallpaperInfoObject> = emptyList()
@@ -45,14 +42,9 @@ class EditFragment : Fragment() {
     lateinit var tagsResultCallback: Callback<TagsResult>
     var height: Int = 1920
     var width: Int = 1080
-
-    object RetrofitHelper {
-        const val baseUrl = "https://ww.keefer.de"
-        fun getInstance(): Retrofit {
-            return Retrofit.Builder().baseUrl(baseUrl)
-                .addConverterFactory(GsonConverterFactory.create()).build()
-        }
-    }
+    val wallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
+    lateinit var mainParentView: View
+    lateinit var onRefreshLayout: SwipeRefreshLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,19 +60,34 @@ class EditFragment : Fragment() {
 
     private fun queryWallpaperList() {
         wallpaperApi.getWallpaperList().enqueue(object : Callback<WallpaperListResponse> {
-            override fun onFailure(call: Call<WallpaperListResponse>, t: Throwable) {
+            fun errorHandle() {
+                onRefreshLayout.isRefreshing = false
                 Log.d("WallpaperListResponse", "failed to query")
-                Log.d("WallpaperListResponse", t.toString())
+                Snackbar.make(
+                    mainParentView, "Error while getting the Wallpaper List", Snackbar.LENGTH_LONG
+                ).setAction("Retry") {
+                    wallpaperApi.getWallpaperList().enqueue(this)
+                }.show()
+            }
+
+            override fun onFailure(call: Call<WallpaperListResponse>, t: Throwable) {
+                errorHandle()
             }
 
             override fun onResponse(
                 call: Call<WallpaperListResponse>, response: Response<WallpaperListResponse>
             ) {
-                wallpaperList = response.body()!!.wallpapers.toList()
-                shownWallpaper = wallpaperList.toMutableList()
-                recyclerAdapter.dataSet = shownWallpaper
-                recyclerAdapter.notifyDataSetChanged()
-                Log.d("WallpaperListResponse", response.body()!!.toString())
+                if (response.code() == 200) {
+                    onRefreshLayout.isRefreshing = false
+                    wallpaperList = response.body()!!.wallpapers.toList()
+                    shownWallpaper = wallpaperList.toMutableList()
+                    recyclerAdapter.dataSet = shownWallpaper
+                    recyclerAdapter.notifyDataSetChanged()
+                    Log.d("WallpaperListResponse", response.body()!!.toString())
+                } else {
+                    errorHandle()
+                }
+
 
             }
 
@@ -96,16 +103,17 @@ class EditFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        recyclerView = view.findViewById<RecyclerView>(R.id.edit_fragment_recycler_view)
+        mainParentView = view
+        recyclerView = view.findViewById(R.id.edit_fragment_recycler_view)
         recyclerAdapter = CustomAdapter(wallpaperList)
         recyclerView.adapter = recyclerAdapter
         recyclerView.layoutManager = GridLayoutManager(requireContext(), 3)
 
-        val onRefreshLayout = view.findViewById<SwipeRefreshLayout>(R.id.edit_fragment_swipe_refresh_layout)
+        onRefreshLayout = view.findViewById(R.id.edit_fragment_swipe_refresh_layout)
 
         onRefreshLayout.setOnRefreshListener {
             queryWallpaperList()
-            onRefreshLayout.isRefreshing = false
+
         }
 
         val editWallpaperFab =
@@ -114,9 +122,7 @@ class EditFragment : Fragment() {
         editWallpaperFab.setOnClickListener {
             if (selectedWallpaper.isEmpty()) {
                 Snackbar.make(
-                    view,
-                    "Select a wallpaper to edit",
-                    Snackbar.LENGTH_LONG
+                    view, "Select a wallpaper to edit", Snackbar.LENGTH_LONG
                 ).show()
             } else {
                 (activity as DataPassInterface).passEditWallpaper(selectedWallpaper)
@@ -129,34 +135,35 @@ class EditFragment : Fragment() {
         deleteWallpaperFab.setOnClickListener {
             if (selectedWallpaper.isEmpty()) {
                 Snackbar.make(
-                    view,
-                    "Select a wallpaper to delete",
-                    Snackbar.LENGTH_LONG
+                    view, "Select a wallpaper to delete", Snackbar.LENGTH_LONG
                 ).show()
             } else {
-                selectedWallpaper.stream()
-                    .forEach {
-                        wallpaperApi.deleteWallpaper(it.name)
-                            .enqueue(object : Callback<ResponseBody> {
-                                override fun onResponse(
-                                    call: Call<ResponseBody>,
-                                    response: Response<ResponseBody>
-                                ) {
-                                    queryWallpaperList()
-                                }
+                selectedWallpaper.stream().forEach {
+                    wallpaperApi.deleteWallpaper(it.name).enqueue(object : Callback<ResponseBody> {
+                        fun errorHandle() {
+                            Snackbar.make(
+                                mainParentView, "Error deleting you wallpaper", Snackbar.LENGTH_LONG
+                            ).show()
+                        }
 
-                                override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                        override fun onResponse(
+                            call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                            if (response.code() == 200) {
+                                queryWallpaperList()
+                            } else {
+                                errorHandle()
+                            }
+                        }
 
-                                }
-
-                            })
-                    }
+                        override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
+                            errorHandle()
+                        }
+                    })
+                }
             }
         }
 
         val tagGroup: TagGroup = view.findViewById(R.id.edit_fragment_tag_layout)
-
-
 
         tagsResultCallback = object : Callback<TagsResult> {
             fun errorHandle() {
@@ -170,7 +177,6 @@ class EditFragment : Fragment() {
             }
 
             override fun onResponse(call: Call<TagsResult>, response: Response<TagsResult>) {
-
                 if (response.code() == 200) {
                     Log.d("tags_response", response.body()!!.tags.toList().toString())
                     tagGroup.setTags(response.body()!!.tags, emptyArray())
@@ -236,10 +242,10 @@ class EditFragment : Fragment() {
             // Create a new view, which defines the UI of the list item
             val view = LayoutInflater.from(viewGroup.context)
                 .inflate(R.layout.wallpaper_thumbnail_item, viewGroup, false)
-            val frame_layout: FrameLayout =
+            val frameLayout: FrameLayout =
                 view.findViewById<FrameLayout>(R.id.wallpaper_thumbnail_item_layout)
 
-            frame_layout.minimumHeight = (this@EditFragment.width - 20) / 3
+            frameLayout.minimumHeight = (this@EditFragment.width - 20) / 3
             return ViewHolder(view)
         }
 
@@ -277,23 +283,38 @@ class EditFragment : Fragment() {
 
             wallpaperApi.getThumbnail(viewHolder.wallpaperInfoObject.name)
                 .enqueue(object : Callback<ResponseBody> {
+
+                    fun errorHandle() {
+                        Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
+                        Snackbar.make(
+                            mainParentView,
+                            "Error while getting the Thumbnail",
+                            Snackbar.LENGTH_LONG
+                        ).setAction("Retry") {
+                            wallpaperApi.getThumbnail(viewHolder.wallpaperInfoObject.name)
+                                .enqueue(this)
+                        }.show()
+                    }
+
                     override fun onResponse(
                         call: Call<ResponseBody>, response: Response<ResponseBody>
                     ) {
-                        Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
-                        Log.d("thumbnail_response", response.message())
-                        val inputStream = response.body()!!.byteStream()
-                        val bitmap = BitmapFactory.decodeStream(inputStream)
-                        inputStream.close()
-                        viewHolder.imageView.setImageBitmap(bitmap)
+                        if (response.code() == 200) {
+                            Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
+                            Log.d("thumbnail_response", response.message())
+                            val inputStream = response.body()!!.byteStream()
+                            val bitmap = BitmapFactory.decodeStream(inputStream)
+                            inputStream.close()
+                            viewHolder.imageView.setImageBitmap(bitmap)
+                        } else {
+                            errorHandle()
+                        }
                     }
 
                     override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                        Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
+                        errorHandle()
                     }
-
                 })
-
         }
 
         override fun onViewRecycled(holder: ViewHolder) {
@@ -307,7 +328,5 @@ class EditFragment : Fragment() {
 
         // Return the size of your dataset (invoked by the layout manager)
         override fun getItemCount() = dataSet.size
-
     }
-
 }

@@ -31,8 +31,6 @@ import kotlinx.coroutines.GlobalScope
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.stream.Collectors
@@ -48,15 +46,6 @@ class HomeFragment : Fragment() {
     lateinit var notiProvider: NotificationProvider
     val wallpaperApi: WallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
     lateinit var tagsResultCallback: Callback<TagsResult>
-
-
-    object RetrofitHelper {
-        private const val baseUrl = "https://ww.keefer.de"
-        fun getInstance(): Retrofit {
-            return Retrofit.Builder().baseUrl(baseUrl)
-                .addConverterFactory(GsonConverterFactory.create()).build()
-        }
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -184,7 +173,9 @@ class HomeFragment : Fragment() {
             WorkManager.getInstance(context).getWorkInfoByIdLiveData(downloadWorkRequest.id)
                 .observeForever { workInfo ->
                     if (workInfo != null && workInfo.state == WorkInfo.State.ENQUEUED) {
-                        val notificationManager = NotificationManagerCompat.from(context)
+                        notificationManager = ContextCompat.getSystemService(
+                            context, NotificationManager::class.java
+                        )!!
                         notificationManager.notify(
                             notiProvider.DOWNLOAD_PENDING_NOTIFICATION_ID,
                             notiProvider.DOWNLOAD_PENDING_NOTIFICATION
