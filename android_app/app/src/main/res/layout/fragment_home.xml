@@ -116,6 +116,8 @@
                         android:layout_marginStart="10dp"
                         android:background="@drawable/input_background"
                         android:fontFamily="@font/arimo"
+                        android:maxLines="1"
+                        android:maxLength="20"
                         android:hint="@string/sync" />
                 </LinearLayout>
 

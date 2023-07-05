@@ -31,8 +31,8 @@ class MainActivity : AppCompatActivity(), DataPassInterface {
 
     override fun passEditWallpaper(wallpaper: MutableList<WallpaperInfoObject>) {
         viewPager.currentItem=0
-        (uploadFragment as UploadFragmentInterface).set_wallpaper_info_stack(wallpaper)
-        (uploadFragment as UploadFragmentInterface).load_from_wallpaper_info_stack()
+        (uploadFragment as UploadFragmentInterface).addToWallpaperStack(wallpaper)
+        (uploadFragment as UploadFragmentInterface).loadFromStack()
     }
     private inner class ScreenSlidePagerAdapter(fa: FragmentActivity) : FragmentStateAdapter(fa) {
         val fragmentClassArray = arrayOf(uploadFragment, homeFragment, editFragment)

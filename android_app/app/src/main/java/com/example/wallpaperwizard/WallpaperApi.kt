@@ -3,8 +3,8 @@ package com.example.wallpaperwizard
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Call
-import retrofit2.Response
 import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
 
 interface WallpaperApi {
@@ -44,13 +44,11 @@ interface WallpaperApi {
 
 }
 
-class API() {
-    object RetrofitHelper {
-        val baseUrl = "http://192.168.122.45:3000"
-
-        fun getInstance(): Retrofit {
-            return Retrofit.Builder().baseUrl(baseUrl).build()
-        }
+object RetrofitHelper {
+    private const val baseUrl = "https://ww.keefer.de"
+    fun getInstance(): Retrofit {
+        return Retrofit.Builder().baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create()).build()
     }
 }
 

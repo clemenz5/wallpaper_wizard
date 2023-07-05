@@ -10,9 +10,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.EditText
-import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.app.NotificationManagerCompat
@@ -28,12 +26,11 @@ import com.example.wallpaperwizard.Worker.WallpaperChangerWorker
 import com.google.android.material.chip.Chip
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.stream.Collectors
@@ -41,27 +38,14 @@ import java.util.stream.Collectors
 
 class HomeFragment : Fragment() {
     private lateinit var _broadcastReceiver: BroadcastReceiver
-    val _sdfWatchTime = SimpleDateFormat("HH:mm")
-    val _sdfDateTime = SimpleDateFormat("EEEE, dd. MMMM")
-    lateinit var time_Viewer: TextView
-    lateinit var date_viewer: TextView
+    val sdfWatchTime = SimpleDateFormat("HH:mm")
+    val sdfDateTime = SimpleDateFormat("EEEE, dd. MMMM")
+    lateinit var timeViewer: TextView
+    lateinit var dateViewer: TextView
     lateinit var notificationManager: NotificationManager
     lateinit var notiProvider: NotificationProvider
-    val wallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
+    val wallpaperApi: WallpaperApi = RetrofitHelper.getInstance().create(WallpaperApi::class.java)
     lateinit var tagsResultCallback: Callback<TagsResult>
-
-
-    object RetrofitHelper {
-        val baseUrl = "https://ww.keefer.de"
-        fun getInstance(): Retrofit {
-            return Retrofit.Builder().baseUrl(baseUrl)
-                .addConverterFactory(GsonConverterFactory.create()).build()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -69,15 +53,17 @@ class HomeFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_home, container, false)
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun onViewCreated(parent: View, savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val context = requireContext()
-        // Show the notification
+        // Notification Setup
         notificationManager = ContextCompat.getSystemService(
             context, NotificationManager::class.java
         )!!
         notiProvider = NotificationProvider(context)
         notiProvider.createNotificationChannels(notificationManager)
+
         GlobalScope.run {
             for (workInfo in WorkManager.getInstance(context).getWorkInfosByTag("upload").get()) {
                 if (workInfo.state == WorkInfo.State.ENQUEUED) {
@@ -94,10 +80,16 @@ class HomeFragment : Fragment() {
         }
 
         val swipeRefreshView: SwipeRefreshLayout = parent.findViewById(R.id.swipe_refresh_view)
-        val applyConfig: FloatingActionButton = parent.findViewById(R.id.applyConfig)
-        val main_parent_view: ConstraintLayout = parent.findViewById(R.id.main_parent_view)
-        val settingsFab: FloatingActionButton= parent.findViewById(R.id.action_settings)
+        swipeRefreshView.setOnRefreshListener { ->
+            wallpaperApi.getTags().enqueue(tagsResultCallback)
+        }
 
+        val mainParentView: ConstraintLayout = parent.findViewById(R.id.main_parent_view)
+
+        val settingsFab: FloatingActionButton = parent.findViewById(R.id.action_settings)
+        settingsFab.setOnClickListener {
+            startActivity(Intent(activity, SettingsActivity::class.java))
+        }
 
         val prefs = context.getSharedPreferences(
             "wallpaper_wizard.preferences", Context.MODE_PRIVATE
@@ -105,29 +97,22 @@ class HomeFragment : Fragment() {
         val settings = PreferenceManager.getDefaultSharedPreferences(context)
         val tagsPrefsKey = "tags_preferences"
         val syncPrefsKey = "sync_preferences"
-
-        val preferred_tags = prefs.getString(tagsPrefsKey, "")!!.split(";").stream().filter { str -> str != ""}.collect(Collectors.toList())
-        val preferred_sync = prefs.getString(syncPrefsKey, "")
+        val preferredSync = prefs.getString(syncPrefsKey, "")
 
         val syncInput: EditText = parent.findViewById(R.id.sync_input)
-        syncInput.setText(preferred_sync)
+        syncInput.setText(preferredSync)
+
+        val preferredTags =
+            prefs.getString(tagsPrefsKey, "")!!.split(";").stream().filter { str -> str != "" }
+                .collect(Collectors.toList())
         val tagGroup: TagGroup = parent.findViewById(R.id.tag_group)
-        time_Viewer = parent.findViewById(R.id.time_viewer)
-        date_viewer = parent.findViewById(R.id.date_viewer)
-        date_viewer.text = _sdfDateTime.format(Date())
-        time_Viewer.text = _sdfWatchTime.format(Date())
-
-        settingsFab.setOnClickListener {
-            startActivity(Intent(activity, SettingsActivity::class.java))
-        }
-
         tagsResultCallback = object : Callback<TagsResult> {
-            fun errorHandle(){
+            fun errorHandle() {
                 Snackbar.make(
-                    main_parent_view,
+                    mainParentView,
                     "Error while getting the Tags. Offline functionality will be implemented soon",
                     Snackbar.LENGTH_LONG
-                ).setAction("Retry") { view ->
+                ).setAction("Retry") {
                     wallpaperApi.getTags().enqueue(this)
                 }.show()
             }
@@ -136,7 +121,7 @@ class HomeFragment : Fragment() {
                 swipeRefreshView.isRefreshing = false
                 if (response.code() == 200) {
                     Log.d("tags_response", response.body()!!.tags.toList().toString())
-                    tagGroup.setTags(response.body()!!.tags, preferred_tags.toTypedArray())
+                    tagGroup.setTags(response.body()!!.tags, preferredTags.toTypedArray())
                 } else {
                     errorHandle()
                 }
@@ -147,23 +132,22 @@ class HomeFragment : Fragment() {
                 errorHandle()
             }
         }
-
         wallpaperApi.getTags().enqueue(tagsResultCallback)
 
-        swipeRefreshView.setOnRefreshListener { ->
-            wallpaperApi.getTags().enqueue(tagsResultCallback)
-        }
+        timeViewer = parent.findViewById(R.id.time_viewer)
+        timeViewer.text = sdfWatchTime.format(Date())
+        dateViewer = parent.findViewById(R.id.date_viewer)
+        dateViewer.text = sdfDateTime.format(Date())
 
-
-
+        val applyConfig: FloatingActionButton = parent.findViewById(R.id.applyConfig)
         applyConfig.setOnClickListener { view ->
-            var saved_tags = ""
+            var savedTags = ""
             for (id in tagGroup.tagGroup.checkedChipIds) {
                 val chip = parent.findViewById<Chip>(id)
-                saved_tags += chip.text
-                saved_tags += ";"
+                savedTags += chip.text
+                savedTags += ";"
             }
-            prefs.edit().putString(tagsPrefsKey, saved_tags).apply()
+            prefs.edit().putString(tagsPrefsKey, savedTags).apply()
             prefs.edit().putString(syncPrefsKey, syncInput.text.toString()).apply()
 
             Snackbar.make(view, "Set new Wallpaper", Snackbar.LENGTH_LONG).setAction("Action", null)
@@ -182,13 +166,16 @@ class HomeFragment : Fragment() {
             settings.edit().putBoolean("daily", false).apply()
 
 
-            WorkManager.getInstance(context).enqueueUniqueWork("one_time_updater", ExistingWorkPolicy.REPLACE, downloadWorkRequest)
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                "one_time_updater", ExistingWorkPolicy.REPLACE, downloadWorkRequest
+            )
 
             WorkManager.getInstance(context).getWorkInfoByIdLiveData(downloadWorkRequest.id)
                 .observeForever { workInfo ->
                     if (workInfo != null && workInfo.state == WorkInfo.State.ENQUEUED) {
-                        val notificationManager =
-                            NotificationManagerCompat.from(context)
+                        notificationManager = ContextCompat.getSystemService(
+                            context, NotificationManager::class.java
+                        )!!
                         notificationManager.notify(
                             notiProvider.DOWNLOAD_PENDING_NOTIFICATION_ID,
                             notiProvider.DOWNLOAD_PENDING_NOTIFICATION
@@ -210,9 +197,9 @@ class HomeFragment : Fragment() {
         super.onStart()
         _broadcastReceiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context, intent: Intent) {
-                if (intent.action!!.compareTo(Intent.ACTION_TIME_TICK) == 0 && time_Viewer.isInLayout) {
-                    time_Viewer.text = _sdfWatchTime.format(Date())
-                    date_viewer.text = _sdfDateTime.format(Date())
+                if (intent.action!!.compareTo(Intent.ACTION_TIME_TICK) == 0 && timeViewer.isInLayout) {
+                    timeViewer.text = sdfWatchTime.format(Date())
+                    dateViewer.text = sdfDateTime.format(Date())
 
                 }
             }

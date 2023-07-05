@@ -15,8 +15,6 @@ import com.google.android.material.chip.ChipGroup
 import java.util.stream.Collectors
 
 class TagGroup(context: Context, attributeSet: AttributeSet?) :
-
-
     LinearLayout(context, attributeSet) {
     var tagGroup: ChipGroup
     lateinit var selectedChips: MutableList<Chip>
