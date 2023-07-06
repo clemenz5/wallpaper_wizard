@@ -48,7 +48,7 @@
           {
             "name": "tags",
             "in": "query",
-            "description": "The sync target",
+            "description": "The tags",
             "required": false,
             "schema": {
               "type": "string"
@@ -58,6 +58,20 @@
         "responses": {
           "200": {
             "description": "Successful operation",
+            "headers": {
+              "crop": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The crop of the wallpaper for mobile devices"
+              },
+              "name": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The name of the wallpaper"
+              }
+            },
             "content": {
               "image/png": {
                 "schema": {

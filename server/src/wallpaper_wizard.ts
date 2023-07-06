@@ -147,6 +147,7 @@ app.get("/wallpaper/:wallpaperName", (req: Request, res: Response) => {
       }
       res.statusCode = 200;
       res.header("crop", results[0].crop);
+      res.header("name", results[0].name)
       res.sendFile(`${pwd}/data/uploads/${results[0].name}`);
     }
   );
@@ -170,6 +171,7 @@ app.get("/thumbnail/:wallpaperName", (req: Request, res: Response) => {
       }
       res.statusCode = 200;
       res.header("crop", results[0].crop);
+      res.header("name", results[0].name)
       res.sendFile(`${pwd}/data/uploads/thumbnails/thumb_${results[0].name}`);
     }
   );
@@ -250,6 +252,7 @@ app.get("/wallpaper", (req: express.Request, res: Response) => {
                     );
                   } else {
                     res.header("crop", chosen_wallpaper.crop);
+                    res.header("name", chosen_wallpaper.name)
                     res.sendFile(
                       `${pwd}/data/uploads/${chosen_wallpaper.name}`
                     );
@@ -273,6 +276,7 @@ app.get("/wallpaper", (req: express.Request, res: Response) => {
             }
             console.log(results);
             res.header("crop", results[0].crop);
+            res.header("name", results[0].name);
             res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.wallpaper}`);
           }
         );
@@ -299,6 +303,7 @@ app.get("/wallpaper", (req: express.Request, res: Response) => {
           let pwd = process.cwd();
 
           res.header("crop", chosen_wallpaper.crop);
+          res.header("name", chosen_wallpaper.name);
           res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.name}`);
         }
       }
