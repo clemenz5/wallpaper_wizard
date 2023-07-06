@@ -50,6 +50,8 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.stream.Collectors
 
 
@@ -331,6 +333,17 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
                                     val inputStream = p1.body()!!.byteStream()
                                     currentBitmap = BitmapFactory.decodeStream(inputStream)
                                     inputStream.close()
+
+                                    // Save the new image
+                                    try {
+                                        FileOutputStream(File(imagePath)).use { outputStream ->
+                                            currentBitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                                            outputStream.flush()
+                                        }
+                                    } catch (e: IOException) {
+                                        e.printStackTrace()
+                                    }
+
                                     animateWallpaperLoading()
                                 } else {
                                     errorHandle()
