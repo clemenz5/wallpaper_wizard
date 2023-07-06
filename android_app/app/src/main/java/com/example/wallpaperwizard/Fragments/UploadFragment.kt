@@ -12,8 +12,11 @@ import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
-import android.view.*
-import android.view.View.*
+import android.view.LayoutInflater
+import android.view.View
+import android.view.View.GONE
+import android.view.View.VISIBLE
+import android.view.ViewGroup
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -23,7 +26,13 @@ import androidx.core.content.ContextCompat.checkSelfPermission
 import androidx.fragment.app.Fragment
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.viewpager2.widget.ViewPager2
-import androidx.work.*
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import androidx.work.WorkRequest
 import com.example.wallpaperwizard.Components.TagGroup.TagGroup
 import com.example.wallpaperwizard.NotificationProvider
 import com.example.wallpaperwizard.R
@@ -40,6 +49,7 @@ import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.File
 import java.util.stream.Collectors
 
 
@@ -291,35 +301,47 @@ class UploadFragment : Fragment(), UploadFragmentInterface {
                 Log.d("currentWallpaperObject", currentWallpaperObject.toString())
                 val currentWallpaperInfoObject: WallpaperInfoObject = currentWallpaperObject
                 tagGroup.setTags(tagGroup.tags, currentWallpaperInfoObject.tags)
-                wallpaperApi.getWallpaperByName(currentWallpaperInfoObject.name)
-                    .enqueue(object : Callback<ResponseBody> {
 
-                        fun errorHandle() {
-                            Snackbar.make(
-                                mainParentView,
-                                "Error while getting the Wallpaper",
-                                Snackbar.LENGTH_LONG
-                            ).show()
-                            loadFromStack()
-                        }
+                //See if the bitmap is already stored on the device
+                val imagePath: String =
+                    requireContext().filesDir.absolutePath + "/" + currentWallpaperInfoObject.name
+                val imageFile = File(imagePath)
 
-                        override fun onResponse(
-                            p0: Call<ResponseBody>, p1: Response<ResponseBody>
-                        ) {
-                            if (p1.code() == 200) {
-                                val inputStream = p1.body()!!.byteStream()
-                                currentBitmap = BitmapFactory.decodeStream(inputStream)
-                                inputStream.close()
-                                animateWallpaperLoading()
-                            } else {
+                if (imageFile.exists()) {
+                    currentBitmap = BitmapFactory.decodeFile(imagePath)
+                    animateWallpaperLoading()
+                } else {
+                    // The file does not exist
+                    wallpaperApi.getWallpaperByName(currentWallpaperInfoObject.name)
+                        .enqueue(object : Callback<ResponseBody> {
+
+                            fun errorHandle() {
+                                Snackbar.make(
+                                    mainParentView,
+                                    "Error while getting the Wallpaper",
+                                    Snackbar.LENGTH_LONG
+                                ).show()
+                                loadFromStack()
+                            }
+
+                            override fun onResponse(
+                                p0: Call<ResponseBody>, p1: Response<ResponseBody>
+                            ) {
+                                if (p1.code() == 200) {
+                                    val inputStream = p1.body()!!.byteStream()
+                                    currentBitmap = BitmapFactory.decodeStream(inputStream)
+                                    inputStream.close()
+                                    animateWallpaperLoading()
+                                } else {
+                                    errorHandle()
+                                }
+                            }
+
+                            override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                                 errorHandle()
                             }
-                        }
-
-                        override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                            errorHandle()
-                        }
-                    })
+                        })
+                }
             }
 
             else -> {
