@@ -11,6 +11,9 @@ import com.example.wallpaperwizard.Fragments.EditFragment
 import com.example.wallpaperwizard.Fragments.HomeFragment
 import com.example.wallpaperwizard.Fragments.UploadFragment
 import com.example.wallpaperwizard.Fragments.UploadFragmentInterface
+import java.io.File
+import java.nio.file.Files
+import kotlin.io.path.Path
 
 class MainActivity : AppCompatActivity(), DataPassInterface {
     private lateinit var viewPager: ViewPager2
@@ -27,6 +30,11 @@ class MainActivity : AppCompatActivity(), DataPassInterface {
         val pagerAdapter = ScreenSlidePagerAdapter(this)
         viewPager.adapter = pagerAdapter
         viewPager.currentItem = 1
+
+
+        if(!File(applicationContext.filesDir.absolutePath + "/thumbnails").exists()) {
+            Files.createDirectory(Path(applicationContext.filesDir.absolutePath + "/thumbnails"))
+        }
     }
 
     override fun passEditWallpaper(wallpaper: MutableList<WallpaperInfoObject>) {

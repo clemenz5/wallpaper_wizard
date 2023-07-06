@@ -1,5 +1,6 @@
 package com.example.wallpaperwizard.Fragments
 
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.os.Bundle
@@ -30,6 +31,9 @@ import okhttp3.ResponseBody
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 import java.util.stream.Collectors
 
 
@@ -147,7 +151,8 @@ class EditFragment : Fragment() {
                         }
 
                         override fun onResponse(
-                            call: Call<ResponseBody>, response: Response<ResponseBody>) {
+                            call: Call<ResponseBody>, response: Response<ResponseBody>
+                        ) {
                             if (response.code() == 200) {
                                 queryWallpaperList()
                             } else {
@@ -280,41 +285,64 @@ class EditFragment : Fragment() {
                 true
             }
 
+            //See if the bitmap is already stored on the device
+            val imagePath: String =
+                requireContext().filesDir.absolutePath + "/thumbnails/" + viewHolder.wallpaperInfoObject.name
+            val imageFile = File(imagePath)
 
-            wallpaperApi.getThumbnail(viewHolder.wallpaperInfoObject.name)
-                .enqueue(object : Callback<ResponseBody> {
+            if (imageFile.exists()) {
+                viewHolder.imageView.setImageBitmap(BitmapFactory.decodeFile(imagePath))
+            } else {
+                wallpaperApi.getThumbnail(viewHolder.wallpaperInfoObject.name)
+                    .enqueue(object : Callback<ResponseBody> {
 
-                    fun errorHandle() {
-                        Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
-                        Snackbar.make(
-                            mainParentView,
-                            "Error while getting the Thumbnail",
-                            Snackbar.LENGTH_LONG
-                        ).setAction("Retry") {
-                            wallpaperApi.getThumbnail(viewHolder.wallpaperInfoObject.name)
-                                .enqueue(this)
-                        }.show()
-                    }
-
-                    override fun onResponse(
-                        call: Call<ResponseBody>, response: Response<ResponseBody>
-                    ) {
-                        if (response.code() == 200) {
+                        fun errorHandle() {
                             Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
-                            Log.d("thumbnail_response", response.message())
-                            val inputStream = response.body()!!.byteStream()
-                            val bitmap = BitmapFactory.decodeStream(inputStream)
-                            inputStream.close()
-                            viewHolder.imageView.setImageBitmap(bitmap)
-                        } else {
+                            Snackbar.make(
+                                mainParentView,
+                                "Error while getting the Thumbnail",
+                                Snackbar.LENGTH_LONG
+                            ).setAction("Retry") {
+                                wallpaperApi.getThumbnail(viewHolder.wallpaperInfoObject.name)
+                                    .enqueue(this)
+                            }.show()
+                        }
+
+                        override fun onResponse(
+                            call: Call<ResponseBody>, response: Response<ResponseBody>
+                        ) {
+                            if (response.code() == 200) {
+                                Log.d("thumbnail_response", viewHolder.wallpaperInfoObject.name)
+                                Log.d("thumbnail_response", response.message())
+                                val inputStream = response.body()!!.byteStream()
+                                val bitmap = BitmapFactory.decodeStream(inputStream)
+
+                                //Save image to local storage
+                                try {
+                                    FileOutputStream(File(imagePath)).use { outputStream ->
+                                        bitmap.compress(
+                                            Bitmap.CompressFormat.JPEG,
+                                            100,
+                                            outputStream
+                                        )
+                                        outputStream.flush()
+                                    }
+                                } catch (e: IOException) {
+                                    e.printStackTrace()
+                                }
+
+                                inputStream.close()
+                                viewHolder.imageView.setImageBitmap(bitmap)
+                            } else {
+                                errorHandle()
+                            }
+                        }
+
+                        override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
                             errorHandle()
                         }
-                    }
-
-                    override fun onFailure(call: Call<ResponseBody>, t: Throwable) {
-                        errorHandle()
-                    }
-                })
+                    })
+            }
         }
 
         override fun onViewRecycled(holder: ViewHolder) {

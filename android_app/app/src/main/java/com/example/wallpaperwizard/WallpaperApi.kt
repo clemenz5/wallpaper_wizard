@@ -27,7 +27,7 @@ interface WallpaperApi {
     ): Call<ResponseBody>
 
     @GET("/wallpaper")
-    fun getWallpaper(@Query("tags") tags: String, @Query("sync") sync: String): Call<ResponseBody>
+    fun getWallpaper(@Query("tags") tags: String, @Query("sync") sync: String, @Query("follow") follow: Boolean, @Query("info") info: Boolean): Call<ResponseBody>
 
     @GET("/thumbnail/{wallpaper_name}")
     fun getThumbnail(@Path("wallpaper_name") wallpaper_name: String): Call<ResponseBody>

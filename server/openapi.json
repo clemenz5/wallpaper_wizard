@@ -48,22 +48,71 @@
           {
             "name": "tags",
             "in": "query",
-            "description": "The sync target",
+            "description": "The tags",
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "follow",
+            "in": "query",
+            "description": "Specify if you want to set a new wallpaper or follow the current sync parameter",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "info",
+            "in": "query",
+            "description": "Omit the image and just send the headers",
+            "required": false,
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
         "responses": {
           "200": {
             "description": "Successful operation",
+            "headers": {
+              "crop": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The crop of the wallpaper for mobile devices"
+              },
+              "name": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The name of the wallpaper"
+              }
+            },
             "content": {
               "image/png": {
                 "schema": {
                   "type": "string",
                   "format": "binary"
                 }
+              }
+            }
+          },
+          "204": {
+            "description": "Successful operation - Only headers",
+            "headers": {
+              "crop": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The crop of the wallpaper for mobile devices"
+              },
+              "name": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "The name of the wallpaper"
               }
             }
           },

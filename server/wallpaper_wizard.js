@@ -109,6 +109,7 @@ app.get("/wallpaper/:wallpaperName", (req, res) => {
         }
         res.statusCode = 200;
         res.header("crop", results[0].crop);
+        res.header("name", results[0].name);
         res.sendFile(`${pwd}/data/uploads/${results[0].name}`);
     });
 });
@@ -126,6 +127,7 @@ app.get("/thumbnail/:wallpaperName", (req, res) => {
         }
         res.statusCode = 200;
         res.header("crop", results[0].crop);
+        res.header("name", results[0].name);
         res.sendFile(`${pwd}/data/uploads/thumbnails/thumb_${results[0].name}`);
     });
 });
@@ -139,7 +141,7 @@ app.delete("/wallpaper/:wallpaperName", (req, res) => {
     fs.unlink(`${pwd}/data/uploads/${req.params.wallpaperName}`, (err) => {
         console.log(err);
     });
-    //delete entry from 
+    //delete entry from
     let db_query = `DELETE FROM wallpaper WHERE name='${req.params.wallpaperName}';`;
     console.log(db_query);
     connection.all(db_query, (error) => {
@@ -160,7 +162,9 @@ app.get("/wallpaper", (req, res) => {
         " tags=" +
         req.query.tags +
         " follow=" +
-        req.query.follow);
+        req.query.follow +
+        " info=" +
+        req.query.info);
     if (req.query.sync) {
         let db_query = `SELECT * FROM sync WHERE sync_name='${req.query.sync}' ORDER BY date DESC LIMIT 1;`;
         console.log(db_query);
@@ -189,7 +193,13 @@ app.get("/wallpaper", (req, res) => {
                             }
                             else {
                                 res.header("crop", chosen_wallpaper.crop);
-                                res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.name}`);
+                                res.header("name", chosen_wallpaper.name);
+                                if (!req.query.info) {
+                                    res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.name}`);
+                                }
+                                else {
+                                    res.sendStatus(204);
+                                }
                             }
                         });
                     }
@@ -207,7 +217,13 @@ app.get("/wallpaper", (req, res) => {
                     }
                     console.log(results);
                     res.header("crop", results[0].crop);
-                    res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.wallpaper}`);
+                    res.header("name", results[0].name);
+                    if (!req.query.info) {
+                        res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.wallpaper}`);
+                    }
+                    else {
+                        res.sendStatus(204);
+                    }
                 });
             }
         });
@@ -230,7 +246,13 @@ app.get("/wallpaper", (req, res) => {
                 let chosen_wallpaper = results[getRandomInt(results.length - 1)];
                 let pwd = process.cwd();
                 res.header("crop", chosen_wallpaper.crop);
-                res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.name}`);
+                res.header("name", chosen_wallpaper.name);
+                if (!req.query.info) {
+                    res.sendFile(`${pwd}/data/uploads/${chosen_wallpaper.name}`);
+                }
+                else {
+                    res.sendStatus(204);
+                }
             }
         });
     }
