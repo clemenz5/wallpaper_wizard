@@ -287,7 +287,7 @@ class EditFragment : Fragment() {
 
             //See if the bitmap is already stored on the device
             val imagePath: String =
-                requireContext().filesDir.absolutePath + "/" + viewHolder.wallpaperInfoObject.name
+                requireContext().filesDir.absolutePath + "/thumbnails/" + viewHolder.wallpaperInfoObject.name
             val imageFile = File(imagePath)
 
             if (imageFile.exists()) {
